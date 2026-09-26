@@ -15,17 +15,17 @@ extends Resource
 ## armados). Nas listas por minuto, a posicao e o minuto da corrida (0 = o
 ## primeiro); depois do ultimo item vale o ultimo.
 ## Maximo de inimigos vivos ao mesmo tempo.
-@export var max_alive_by_minute := PackedInt32Array([2, 2, 3, 3, 4])
-## Segundos entre um inimigo e o proximo (spawn baixo e controlado).
-@export var interval_by_minute := PackedFloat32Array([14.0, 8.0, 7.0, 6.0, 5.0])
+@export var max_alive_by_minute := PackedInt32Array([2, 3, 4, 5, 6])
+## Segundos entre um inimigo e o proximo.
+@export var interval_by_minute := PackedFloat32Array([10.0, 7.0, 5.0, 4.0, 3.5])
 ## Primeiro inimigo depois de tantos segundos de corrida.
-@export_range(0.0, 60.0, 0.5, "suffix:s") var first_enemy_delay := 8.0
+@export_range(0.0, 60.0, 0.5, "suffix:s") var first_enemy_delay := 4.0
 ## Tipos de inimigo: comum (1 a 3 canhoes comuns) desde o inicio; shotgun
 ## (1 a 2 shotguns), bomba (1 bomba) e misto (canhoes misturados, podendo
 ## ter 1 laser) a partir destes minutos.
-@export_range(0, 10, 1) var shotgun_minute := 2
-@export_range(0, 10, 1) var bomb_minute := 3
-@export_range(0, 10, 1) var mixed_minute := 4
+@export_range(0, 10, 1) var shotgun_minute := 1
+@export_range(0, 10, 1) var bomb_minute := 2
+@export_range(0, 10, 1) var mixed_minute := 3
 ## Maximo de canhoes de um inimigo misto.
 @export_range(1, 6, 1) var mixed_max_cannons := 3
 ## Celulas de rocha alem das de canhao (sorteado entre os dois).
@@ -35,11 +35,11 @@ extends Resource
 @export_group("Forca")
 ## Recarga dos canhoes inimigos = recarga do CannonConfig * este fator.
 @export_range(0.5, 20.0, 0.1) var cooldown_mult_start := 5.0
-@export_range(0.5, 20.0, 0.1) var cooldown_mult_end := 2.0
+@export_range(0.5, 20.0, 0.1) var cooldown_mult_end := 1.6
 ## Velocidade dos projeteis inimigos em relacao aos da nave (mais lentos =
 ## da para desviar).
 @export_range(0.1, 2.0, 0.05) var projectile_speed_start := 0.4
-@export_range(0.1, 2.0, 0.05) var projectile_speed_end := 0.65
+@export_range(0.1, 2.0, 0.05) var projectile_speed_end := 0.7
 ## Erro maximo de mira.
 @export_range(0.0, 45.0, 0.5, "radians_as_degrees") var aim_error_start := 0.2
 @export_range(0.0, 45.0, 0.5, "radians_as_degrees") var aim_error_end := 0.05

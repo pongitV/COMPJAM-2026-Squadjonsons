@@ -50,10 +50,14 @@ extends Resource
 ## ficam para tras e saem da tela pela esquerda se ninguem pegar.
 @export_range(0.0, 500.0, 1.0, "suffix:px/s") var ore_drift := 45.0
 ## Chance de um asteroide nascer a frente (no sentido do avanco); o resto
-## nasce em qualquer ponto em volta da tela.
+## nasce em qualquer ponto de spawn_side_arc.
 @export_range(0.0, 1.0, 0.05) var spawn_ahead_chance := 0.7
 ## Abertura do arco "a frente" onde eles nascem (centrado no avanco).
 @export_range(0.0, 360.0, 1.0, "radians_as_degrees") var spawn_ahead_arc := 2.1
+## Abertura total onde asteroides e inimigos podem nascer, centrada no avanco:
+## 180 = so da metade da tela para a frente (acima, a direita e abaixo dela);
+## 360 = em volta da tela toda.
+@export_range(0.0, 360.0, 1.0, "radians_as_degrees") var spawn_side_arc := PI
 
 @export_group("Chegada")
 ## Tempo ate a bandeira de chegada (a barra no rodape enche nesse tempo).
@@ -83,5 +87,5 @@ func ore_drift_velocity() -> Vector2:
 ## Angulo (a partir do centro da tela) onde um asteroide nasce.
 func roll_spawn_angle() -> float:
 	if randf() < spawn_ahead_chance:
-		return travel_angle + randf_range(-0.5, 0.5) * spawn_ahead_arc
-	return randf() * TAU
+		return travel_angle + randf_range(-0.5, 0.5) * minf(spawn_ahead_arc, spawn_side_arc)
+	return travel_angle + randf_range(-0.5, 0.5) * spawn_side_arc

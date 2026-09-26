@@ -188,19 +188,18 @@ func damage_area(_center: Vector2, _radius: float, amount: float) -> void:
 
 
 ## Longe da nave: a proxima batida volta a entrar com toda a forca.
-## Asteroide inofensivo (tutorial) so quica.
+## Asteroide inofensivo (tutorial) passa direto pela nave.
 func recharge_impact() -> void:
 	impact_budget = 0 if harmless else config.penetration_for(cells.size())
 
 
-## Recuo depois de gastar a penetracao numa batida na nave: impulso no ponto
-## de contato (massa = celulas; cada celula da nave pesa
-## config.ship_mass_per_cell), com elasticidade config.ship_bounce e um recuo
-## minimo que diminui com o tamanho. Tambem separa os dois.
-## `normal` aponta da nave para o asteroide.
+## Batida da nave no chefe (os asteroides comuns atravessam a nave depois de
+## gastar a penetracao, sem quicar): impulso no ponto de contato (massa =
+## celulas dos dois; o chefe e imovel), com elasticidade config.ship_bounce.
+## Tambem separa os dois. `normal` aponta da nave para o asteroide.
 func bounce_off(ship: Player, normal: Vector2, contact: Vector2, depth: float) -> void:
 	var inv_a := 0.0 if immovable else 1.0 / cells.size()
-	var inv_s := 1.0 / maxf(ship.cells.size() * config.ship_mass_per_cell, 0.1)
+	var inv_s := 1.0 / maxf(ship.cells.size(), 1.0)
 	var r := contact - global_position
 	var inv_i := 0.0 if immovable else 1.0 / inertia()
 	var rel := velocity + Vector2(-angular_velocity * r.y, angular_velocity * r.x) - ship.velocity
@@ -211,12 +210,6 @@ func bounce_off(ship: Player, normal: Vector2, contact: Vector2, depth: float) -
 		velocity += normal * j * inv_a
 		ship.velocity -= normal * j * inv_s
 		angular_velocity = clampf(angular_velocity + rn * j * inv_i, -config.spin_limit, config.spin_limit)
-	# Recuo minimo em relacao a nave e ao espaco (a nave freia sozinha logo
-	# depois, entao so o relativo deixaria o asteroide grande voltar a encostar).
-	var min_speed := config.recoil_speed / sqrt(cells.size())
-	var need := maxf(min_speed - velocity.dot(normal), min_speed - (velocity - ship.velocity).dot(normal))
-	if need > 0.0 and not immovable:
-		velocity += normal * need
 	# Separa proporcionalmente a massa (o mais leve anda mais).
 	var push := normal * depth / (inv_a + inv_s)
 	position += push * inv_a

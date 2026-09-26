@@ -118,7 +118,7 @@ func _row(weapon: int, what: String) -> HBoxContainer:
 ## formada (celulas na cor dela e o canhao grande no centro). A largura e a
 ## do maior triangulo (laser), para as colunas das linhas se alinharem.
 class Diagram extends Control:
-	var _weapon := Weapons.SHOTGUN
+	var _weapon: int = Weapons.SHOTGUN
 	var _pieces := false
 
 	func _init(weapon: int, pieces: bool) -> void:

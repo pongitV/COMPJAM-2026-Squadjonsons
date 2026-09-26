@@ -4,12 +4,14 @@ extends Node
 ## relogio da corrida ficam parados. Etapas:
 ## 1. So um meteoro de 4 celulas aparece e o nucleo o destroi sozinho; ele
 ##    sempre se parte em 2 pedacos de 2.
-## 2. Camera lenta: explica a montagem (arrastar pedacos ate a nave).
+## 2. Camera lenta: explica a montagem (clicar num pedaco para ele encaixar
+##    sozinho, ou segurar e arrastar ate a nave). Ao segurar o primeiro
+##    pedaco, aparece a dica da roda do mouse para gira-lo.
 ## 3. Aparece um inimigo que sempre erra os tiros: uma rocha com uma peca de
 ##    cada lado, cada peca com 1 canhao. Ao morrer, solta essas 2 pecas.
 ## 4. Camera lenta: pede para encaixar os 2 canhoes; encaixados, abre a
 ##    janela das formacoes (FormationWindow), com o jogo pausado.
-## 5. Camera lenta: explica o giro da nave (tecla R).
+## 5. Camera lenta: explica o giro da nave (tecla R ou clique direito).
 ## Os asteroides do tutorial sao inofensivos (Asteroid.harmless). A camera
 ## lenta volta ao normal quando o jogador faz o que o texto pede (ou depois
 ## de SLOW_MAX). ENTER pula tudo.
@@ -63,6 +65,8 @@ var _rotated := 0.0
 ## Canhoes na nave (fora o do nucleo) quando o inimigo morreu.
 var _turrets_before := 0
 var _window: FormationWindow
+## A dica da roda do mouse (girar o pedaco segurado) ja apareceu.
+var _wheel_tip_shown := false
 
 
 func _init(game: Node) -> void:
@@ -93,6 +97,11 @@ func _process(delta: float) -> void:
 		Step.ROCK, Step.ENEMY:
 			_respawn_if_lost()
 		Step.ASSEMBLY:
+			if not _wheel_tip_shown and _game.tractor.holding():
+				_wheel_tip_shown = true
+				_panel.show_tip("TUTORIAL  1/3", "GIRAR O PEDAÇO",
+					"Com o pedaço seguro, role {WHEEL} para girá-lo e escolher como ele encaixa na nave.",
+					Ore.COLOR)
 			if _timer > STEP_TIMEOUT or _nothing_to_grab(false):
 				_to_break()
 		Step.BREAK:
@@ -161,20 +170,21 @@ func _on_asteroid_destroyed(a: Asteroid) -> void:
 	if _step == Step.ROCK:
 		_slow(true)
 		_panel.show_tip("TUTORIAL  1/3", "MONTAGEM",
-			"Asteroides destruídos viram pedaços de casco. Segure o clique esquerdo num pedaço, "
-			+ "arraste até a nave e solte quando o encaixe aparecer. A roda do mouse gira o pedaço.",
+			"Asteroides destruídos viram pedaços de casco. Clique {LMB} num pedaço dentro do alcance "
+			+ "e ele encaixa direto na nave, sem arrastar. Para escolher o lugar, segure {LMB} e "
+			+ "arraste até a nave, soltando quando o encaixe aparecer.",
 			Ore.COLOR)
 		_go(Step.ASSEMBLY)
 	elif _step == Step.ENEMY:
 		_slow(true)
 		_turrets_before = _turret_count()
 		_panel.show_tip("TUTORIAL  2/3", "CANHÕES",
-			"Inimigos derrubam canhões. Arraste as duas peças com canhão até a nave e encaixe-as "
-			+ "como os pedaços de casco.", Weapons.color(Weapons.COMMON))
+			"Inimigos derrubam canhões. Encaixe as duas peças com canhão na nave como os pedaços "
+			+ "de casco: clique {LMB} nelas ou segure e arraste.", Weapons.color(Weapons.COMMON))
 		_go(Step.UPGRADE)
 
 
-func _on_piece_attached(placement: Dictionary) -> void:
+func _on_piece_attached(_placement: Dictionary) -> void:
 	if not running:
 		return
 	if _step == Step.ASSEMBLY:
@@ -193,7 +203,7 @@ func _to_rotation() -> void:
 	_slow(true)
 	_rotated = 0.0
 	_panel.show_tip("TUTORIAL  3/3", "GIRAR A NAVE",
-		"Segure {R} (ou o clique direito) para girar a nave na direção do mouse. "
+		"Segure {R} ou {RMB} para girar a nave na direção do mouse. "
 		+ "Use para apontar os canhões e virar o casco para os asteroides.", Player.CORE_COLOR)
 	_go(Step.ROTATION)
 

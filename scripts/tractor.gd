@@ -89,6 +89,11 @@ func _step_pulled(delta: float) -> void:
 			attached.emit(piece, fit)
 
 
+## Um pedaco esta sendo segurado (arrastado) ha mais tempo que um clique rapido.
+func holding() -> bool:
+	return ore != null and _held >= QUICK_CLICK
+
+
 ## Gira o pedaco segurado em passos de 60 graus (+1 horario, -1 anti-horario).
 func turn(steps: int) -> void:
 	if ore != null:

@@ -85,9 +85,9 @@ static func _controls() -> Control:
 	grid.add_theme_constant_override("v_separation", 10)
 	var rows := [
 		[["W", "A", "S", "D"], "mover (setas também)"],
-		[["Clique esquerdo"], "arrastar pedaço até a nave"],
-		[["Roda do mouse"], "girar o pedaço"],
-		[["R"], "girar a nave (ou clique direito)"],
+		[["MOUSE_LEFT"], "clique: encaixa sozinho; segure: arraste até a nave"],
+		[["MOUSE_WHEEL"], "girar o pedaço segurado"],
+		[["R", "MOUSE_RIGHT"], "girar a nave (segurar)"],
 		[["ESC"], "pausar"],
 		[["R"], "recomeçar após o fim de jogo"],
 	]
@@ -110,7 +110,7 @@ static func _how_to_play() -> Control:
 	_line(list, Art.COMMON, "Os canhões atiram sozinhos no asteroide mais próximo.")
 	_line(list, Art.ASTEROID, "Asteroides batem e entram na nave: quanto maiores, mais fundo.")
 	_line(list, Art.SHOTGUN, "Asteroides armados atiram: cada acerto destrói 1 hexágono.")
-	_line(list, Art.ORE, "Destruídos, viram minério: arraste até a nave e encaixe.")
+	_line(list, Art.ORE, "Destruídos, viram minério: clique ou arraste até a nave para encaixar.")
 	_line(list, Art.HULL, "Partes soltas da nave podem ser encaixadas de novo.")
 	_line(list, Art.CORE, "Na bandeira, derrote o MEGATRON: torretas, laser e núcleo.")
 	return list

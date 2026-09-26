@@ -122,21 +122,79 @@ static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY
 	return l
 
 
-## "Tecla" desenhada como um pequeno chip (usada na tela de info).
-## "UP", "DOWN", "LEFT" e "RIGHT" viram setas desenhadas.
-static func key_chip(text: String) -> PanelContainer:
+## "Tecla" desenhada como um pequeno chip (manual e tutorial).
+## "UP", "DOWN", "LEFT" e "RIGHT" viram setas desenhadas; "MOUSE_LEFT",
+## "MOUSE_RIGHT" e "MOUSE_WHEEL" viram o mouse com o botao (ou a roda) aceso.
+## `font_size` e `scale` (espessura da moldura) diminuem o chip para ele
+## caber no meio de um texto; `accent` e a cor da moldura (a do painel em
+## volta deixaria o chip apagado).
+static func key_chip(text: String, font_size: int = 12, scale: float = HexFrame.THIN,
+		accent: Color = CYAN) -> PanelContainer:
 	var chip := PanelContainer.new()
-	chip.add_theme_stylebox_override("panel", frame("key", CYAN, HexFrame.THIN, 2.0))
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_theme_stylebox_override("panel", frame("key", accent, scale, 2.0 * scale / HexFrame.THIN))
 	if text in ARROWS:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
+	elif text in MOUSE:
+		chip.add_child(MouseGlyph.new(MOUSE[text], font_size))
 	else:
-		var l := label(text, 12, TEXT)
+		var l := label(text, font_size, TEXT)
 		l.add_theme_font_override("font", upper_font() if text in UPPERCASE_KEYS else display_font())
 		chip.add_child(l)
 	return chip
 
 
 const ARROWS := {"UP": -PI / 2, "DOWN": PI / 2, "LEFT": PI, "RIGHT": 0.0}
+const MOUSE := {"MOUSE_LEFT": "key_mouse_left", "MOUSE_RIGHT": "key_mouse_right", "MOUSE_WHEEL": "key_mouse_wheel"}
+
+
+## Mouse das teclas (slots "key_mouse_left", "key_mouse_right" e
+## "key_mouse_wheel"); o placeholder e o contorno do mouse com o botao
+## esquerdo, o direito ou a roda aceso em ciano.
+class MouseGlyph extends UISprite:
+	func _init(slot_name: String, font_size: int) -> void:
+		var h := roundf(font_size * 1.5)
+		super(slot_name, Vector2(roundf(h * 0.72), h))
+		color = UIStyle.TEXT
+
+	func _draw_placeholder() -> void:
+		var w := size.y * 0.7
+		var h := size.y - 1.0
+		var r := w * 0.5
+		var o := Vector2((size.x - w) * 0.5, 0.5)
+		var split := r * 1.15
+		var lit := UIStyle.CYAN
+		match slot:
+			"key_mouse_left":
+				draw_colored_polygon(_button(o, r, split, PI), lit)
+			"key_mouse_right":
+				draw_colored_polygon(_button(o, r, split, PI * 1.5), lit)
+		# Contorno: meia-lua em cima, meia-lua embaixo.
+		var outline := PackedVector2Array()
+		for i in 13:
+			outline.append(o + Vector2(r, r) + Vector2.from_angle(PI + PI * i / 12.0) * r)
+		for i in 13:
+			outline.append(o + Vector2(r, h - r) + Vector2.from_angle(PI * i / 12.0) * r)
+		outline.append(outline[0])
+		var line := maxf(1.0, size.y / 14.0)
+		draw_polyline(outline, color, line, true)
+		draw_line(o + Vector2(0.0, split), o + Vector2(w, split), color, line, true)
+		draw_line(o + Vector2(r, 0.0), o + Vector2(r, split), color, line, true)
+		if slot == "key_mouse_wheel":
+			draw_rect(Rect2(o + Vector2(r - line * 1.5, split * 0.2), Vector2(line * 3.0, split * 0.6)), lit)
+
+	## Quarto de cima do mouse (um botao), a partir do angulo `from` da meia-lua.
+	func _button(o: Vector2, r: float, split: float, from: float) -> PackedVector2Array:
+		var pts := PackedVector2Array()
+		for i in 7:
+			pts.append(o + Vector2(r, r) + Vector2.from_angle(from + PI * 0.5 * i / 6.0) * r)
+		if from == PI:
+			pts.append(o + Vector2(r, split))
+			pts.append(o + Vector2(0.0, split))
+		else:
+			pts.append(o + Vector2(2.0 * r, split))
+			pts.append(o + Vector2(r, split))
+		return pts
 
 
 ## Seta do teclado (slot "key_arrow", desenhado apontando para a direita e

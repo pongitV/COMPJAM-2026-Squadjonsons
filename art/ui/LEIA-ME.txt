@@ -18,6 +18,8 @@ Tamanhos de referencia (px na tela):
   icon_pause / icon_manual                              28 x 28
   reticle                                               42 x 42
   key_arrow (apontando para a direita)                  12 x 18
+  key_mouse_left / key_mouse_right / key_mouse_wheel    13 x 18 (manual)
+														11 x 15 (tutorial)
   title_logo                                            tamanho real da imagem
   damage_vignette / backdrop_*                          esticados na tela toda
 

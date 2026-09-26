@@ -5,3 +5,5 @@
 [resource]
 resource_local_to_scene = true
 script = ExtResource("1_config")
+max_alive_by_minute = PackedInt32Array(3, 4, 5, 6, 7)
+interval_by_minute = PackedFloat32Array(5, 4, 3.5, 3, 3.5)

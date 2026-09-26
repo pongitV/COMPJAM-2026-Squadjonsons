@@ -360,8 +360,8 @@ func _spawn_asteroids(delta: float) -> void:
 ## Poe um asteroide (ou inimigo) novo fora da tela e o manda na direcao da nave.
 func _launch_from_edge(a: Asteroid) -> void:
 	var n := a.cells.size()
-	# Em volta da tela (a camera e fixa; a nave pode estar perto da borda), de
-	# preferencia a frente, no sentido do avanco.
+	# Fora da tela, da metade dela para a frente (TravelConfig.spawn_side_arc),
+	# de preferencia bem a frente, no sentido do avanco.
 	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
 	a.position = camera.global_position + Vector2.from_angle(travel_config.roll_spawn_angle()) * dist
 	# Vai na direcao geral do jogador, com um desvio aleatorio, e e arrastado
@@ -512,9 +512,10 @@ func _collide_asteroids() -> void:
 			asteroids[i].collide_with(asteroids[j])
 
 
-## Pedacos de minerio soltos quicam nos asteroides e na nave (massa 1 por
-## celula nos dois); sao bem mais leves que eles (ore_cell_mass). Os presos
-## no raio trator ficam de fora.
+## Pedacos de minerio soltos (e os canhoes que os inimigos derrubam) quicam
+## nos asteroides (massa 1 por celula); sao bem mais leves que eles
+## (ore_cell_mass). Na nave eles passam por cima, sem bater. Os presos no
+## raio trator ficam de fora.
 func _collide_ores() -> void:
 	for ore in ores:
 		if ore.dragged:
@@ -522,8 +523,6 @@ func _collide_ores() -> void:
 		var ore_mass := ore.cells.size() * _cfg.ore_cell_mass
 		for a in asteroids:
 			HexBody.bounce_apart(ore, a, ore_mass, a.mass(), _cfg.ore_bounce, _cfg.spin_limit)
-		if player.alive:
-			HexBody.bounce_apart(ore, player, ore_mass, player.cells.size(), _cfg.ore_bounce, _cfg.spin_limit)
 
 
 ## Asteroide destruido pelos canhoes: pontos e minerio.
@@ -717,9 +716,11 @@ func _trim_ores() -> void:
 
 ## Batida celula a celula: o asteroide entra na nave destruindo as celulas
 ## que toca ate gastar a penetracao do tamanho dele (Asteroid.impact_budget) e
-## entao recua. Ele nao perde celulas: toma contact_damage de dano por celula
-## da nave destruida (o chefe nao toma). Partes da nave que se soltarem do
-## nucleo viram pedacos soltos.
+## entao atravessa a nave sem quicar e sem empurrar (so volta a machucar
+## depois de se afastar). Ele nao perde celulas: toma contact_damage de dano
+## por celula da nave destruida. O chefe nao toma dano e continua sendo uma
+## parede: a nave bate e volta. Partes da nave que se soltarem do nucleo viram
+## pedacos soltos.
 func _check_player_collisions() -> void:
 	var hits := PackedVector2Array()
 	var core_hit := false
@@ -762,15 +763,15 @@ func _check_player_collisions() -> void:
 			a.impact_budget -= 1
 			if not a is Boss:
 				a.apply_damage(_cfg.contact_damage)
+			_shake = maxf(_shake, minf(2.0 + a.cells.size() * 0.3, 10.0))
 			if player.destroy_cell(target):
 				core_hit = true
 				break
 		if core_hit:
 			break
-		# Sem penetracao: bate e recua.
-		if a.impact_budget <= 0:
+		# Sem penetracao: o asteroide passa direto; so o chefe barra a nave.
+		if a.impact_budget <= 0 and a is Boss:
 			a.bounce_off(player, normal, contact, depth)
-			_shake = maxf(_shake, minf(2.0 + a.cells.size() * 0.3, 10.0))
 		if core_hit:
 			break
 	_after_player_damage(hits, core_hit)

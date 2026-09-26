@@ -7,11 +7,12 @@ extends Resource
 
 @export_group("Dificuldade com o tempo")
 ## Multiplicador de dificuldade: comeca em 1 e sobe tanto por minuto de
-## partida (0.1 = +10% por minuto; 0 = desligado). Ele multiplica o que
+## partida (0.3 = +30% por minuto; 0 = desligado). Ele multiplica o que
 ## estiver marcado abaixo, somado as rampas proprias de spawn e tamanho.
-@export_range(0.0, 2.0, 0.01, "suffix:/min") var difficulty_per_minute := 0.1
-## Teto do multiplicador (2.5 = no maximo 2,5x).
-@export_range(1.0, 10.0, 0.1) var difficulty_max := 2.5
+## (O relogio so comeca depois do tutorial.)
+@export_range(0.0, 2.0, 0.01, "suffix:/min") var difficulty_per_minute := 0.3
+## Teto do multiplicador (2 = no maximo 2x; com 0.3/min chega nele em 3:20).
+@export_range(1.0, 10.0, 0.1) var difficulty_max := 2.0
 ## Asteroides nascem com mais HP (e valem mais pontos).
 @export var difficulty_scales_hp := true
 ## Asteroides nascem mais rapidos.
@@ -21,16 +22,21 @@ extends Resource
 
 @export_group("Spawn")
 ## Segundos ate o primeiro asteroide aparecer.
-@export_range(0.0, 10.0, 0.1, "suffix:s") var first_spawn_delay := 1.0
+@export_range(0.0, 10.0, 0.1, "suffix:s") var first_spawn_delay := 4.0
 ## Intervalo entre spawns no inicio da partida.
-@export_range(0.05, 10.0, 0.05, "suffix:s") var spawn_interval_start := 2.0
+@export_range(0.05, 10.0, 0.05, "suffix:s") var spawn_interval_start := 0.9
 ## Menor intervalo possivel (o spawn nunca fica mais rapido que isso).
-@export_range(0.05, 10.0, 0.05, "suffix:s") var spawn_interval_min := 0.55
-## Quanto o intervalo diminui por segundo de jogo (0 = ritmo constante).
-## Com os padroes, chega ao minimo em (2.0 - 0.55) / 0.008 = ~3 min.
-@export_range(0.0, 0.1, 0.001) var spawn_interval_decay := 0.008
-## Variacao aleatoria do intervalo (0.3 = entre 70% e 130% do valor).
-@export_range(0.0, 1.0, 0.05) var spawn_interval_jitter := 0.3
+@export_range(0.05, 10.0, 0.05, "suffix:s") var spawn_interval_min := 0.4
+## Quanto o intervalo diminui por segundo de jogo (0 = ritmo constante). O
+## multiplicador de dificuldade tambem divide o intervalo. Com os padroes (e
+## spawn_rate 0.7), um asteroide a cada ~1,3 s na largada, ~0,8 s em 1 min e
+## ~0,57 s (o minimo) a partir de ~1:40.
+@export_range(0.0, 0.1, 0.001) var spawn_interval_decay := 0.003
+## Variacao aleatoria do intervalo (0.2 = entre 80% e 120% do valor).
+@export_range(0.0, 1.0, 0.05) var spawn_interval_jitter := 0.2
+## Multiplicador final da frequencia de spawn (0.7 = 30% menos asteroides que
+## os intervalos acima; 1 = sem mudanca). Nao afeta os inimigos armados.
+@export_range(0.1, 3.0, 0.05) var spawn_rate := 0.7
 ## Maximo de asteroides vivos ao mesmo tempo (o spawn espera abaixo disso).
 @export_range(1, 500, 1) var max_asteroids := 100
 ## Distancia alem da borda da tela em que os asteroides nascem.
@@ -39,7 +45,7 @@ extends Resource
 @export_range(1.0, 10.0, 0.1) var despawn_factor := 2.5
 ## Desvio maximo da direcao do asteroide em relacao ao jogador
 ## (0 = vem reto na nave).
-@export_range(0.0, 180.0, 0.5, "radians_as_degrees") var aim_spread := 0.6
+@export_range(0.0, 180.0, 0.5, "radians_as_degrees") var aim_spread := 0.0872665
 
 @export_group("Tamanho")
 ## Menor asteroide (em celulas). Pedacos menores que isso viram poeira.
@@ -49,7 +55,9 @@ extends Resource
 ## Tamanho maximo sorteado no inicio da partida.
 @export_range(1, 200, 1) var start_max_size := 3
 ## A cada tantos segundos o tamanho maximo cresce 1 celula (0 = nao cresce).
-@export_range(0.0, 120.0, 0.5, "suffix:s") var seconds_per_size := 10.0
+## Com 8: maximo de 10 celulas em 1 min, 18 em 2 min, 25 em 3 min (fora os
+## canhoes da nave).
+@export_range(0.0, 120.0, 0.5, "suffix:s") var seconds_per_size := 8.0
 ## Celulas a mais no tamanho maximo por celula de canhao que a nave tem
 ## (um laser, feito de 10 comuns, conta 10).
 @export_range(0.0, 10.0, 0.1) var size_per_cannon := 1.5
@@ -68,7 +76,7 @@ extends Resource
 
 @export_group("Movimento")
 ## Faixa de velocidade sorteada no spawn (antes do ajuste por tamanho).
-@export_range(0.0, 1000.0, 1.0, "suffix:px/s") var speed_min := 30.0
+@export_range(0.0, 1000.0, 1.0, "suffix:px/s") var speed_min := 60.0
 @export_range(0.0, 1000.0, 1.0, "suffix:px/s") var speed_max := 85.0
 ## Multiplicador da velocidade dos asteroides minusculos e dos grandes
 ## (a partir de large_size celulas); entre os dois e linear.
@@ -83,21 +91,18 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var bounce := 0.6
 
 @export_group("Batida na nave")
-## Quantas celulas da nave o asteroide destroi numa batida antes de voltar:
+## Quantas celulas da nave o asteroide destroi numa batida:
 ## celulas * penetration_per_cell (no minimo penetration_min). Asteroides
-## maiores entram mais fundo. O asteroide nao perde celulas na batida.
+## maiores entram mais fundo. Depois disso ele atravessa a nave sem quicar
+## (e so volta a machucar depois de se afastar). O asteroide nao perde
+## celulas na batida.
 @export_range(0.0, 2.0, 0.01) var penetration_per_cell := 0.25
 @export_range(0, 20, 1) var penetration_min := 1
 ## Dano que o asteroide toma por celula da nave que destroi.
 @export_range(0.0, 50.0, 0.5) var contact_damage := 2.0
-## Elasticidade da batida com a nave (0 = para, 1 = quique perfeito).
+## Elasticidade da batida da nave no chefe, que e o unico que ainda barra a
+## nave (0 = para, 1 = quique perfeito).
 @export_range(0.0, 1.0, 0.05) var ship_bounce := 0.3
-## Velocidade minima de recuo de um asteroide de 1 celula; divide pela raiz
-## do tamanho (asteroides grandes recuam menos).
-@export_range(0.0, 500.0, 1.0, "suffix:px/s") var recoil_speed := 60.0
-## Massa de cada celula da nave em relacao a de uma celula de asteroide
-## (maior = a nave e menos empurrada nas batidas).
-@export_range(0.1, 10.0, 0.1) var ship_mass_per_cell := 1.0
 
 @export_group("Minerio")
 ## Fracao das celulas que se perde quando o asteroide vira minerio (canhoes
@@ -143,7 +148,7 @@ func spawn_interval(elapsed: float) -> float:
 	if difficulty_scales_spawn:
 		base /= difficulty(elapsed)
 	base = maxf(spawn_interval_min, base)
-	return base * randf_range(1.0 - spawn_interval_jitter, 1.0 + spawn_interval_jitter)
+	return base * randf_range(1.0 - spawn_interval_jitter, 1.0 + spawn_interval_jitter) / spawn_rate
 
 
 ## Maior tamanho que pode ser sorteado agora.
