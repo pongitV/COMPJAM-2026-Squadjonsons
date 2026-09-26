@@ -38,7 +38,7 @@ func step(delta: float) -> void:
 	rotation += angular_velocity * delta
 	if flash > 0.0:
 		flash = maxf(flash - delta * 8.0, 0.0)
-		queue_redraw()
+		_update_tint()
 
 
 ## Recebe um disparo. Retorna true se foi destruído.
@@ -56,12 +56,19 @@ func apply_damage(amount: float) -> void:
 	_damage_accum -= whole
 	hp -= whole
 	flash = 1.0
-	queue_redraw()
+	_update_tint()
+
+
+## A cor de dano/flash é igual no asteroide inteiro, então vira um
+## self_modulate (grátis) em vez de recalcular a cor de cada vértice.
+func _update_tint() -> void:
+	var damage := 1.0 - float(hp) / max_hp
+	var target := base_color.lerp(DAMAGED_COLOR, damage * 0.65).lerp(Color.WHITE, flash * 0.6)
+	self_modulate = Color(target.r / base_color.r, target.g / base_color.g, target.b / base_color.b)
 
 
 func cell_color(_h: Vector2i) -> Color:
-	var damage := 1.0 - float(hp) / max_hp
-	return base_color.lerp(DAMAGED_COLOR, damage * 0.65).lerp(Color.WHITE, flash * 0.6)
+	return base_color
 
 
 func outline_color(_h: Vector2i) -> Color:

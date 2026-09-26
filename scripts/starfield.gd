@@ -8,6 +8,8 @@ const COUNT := 220
 var cam_pos := Vector2.ZERO
 ## [posição no tile, fator de parallax, tamanho, alpha]
 var _stars := []
+## Todas as estrelas vão numa só chamada de desenho.
+var _batch := TriBatch.new()
 
 
 func _ready() -> void:
@@ -23,6 +25,7 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var screen := get_viewport_rect().size
+	_batch.clear()
 	for s in _stars:
 		var p: Vector2 = (s[0] - cam_pos * s[1]).posmod(TILE)
 		var size := Vector2(s[2], s[2])
@@ -31,6 +34,7 @@ func _draw() -> void:
 		while x < screen.x:
 			var y := p.y
 			while y < screen.y:
-				draw_rect(Rect2(Vector2(x, y), size), color)
+				_batch.add_rect(Rect2(Vector2(x, y), size), color)
 				y += TILE
 			x += TILE
+	_batch.draw(get_canvas_item())

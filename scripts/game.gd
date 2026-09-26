@@ -6,6 +6,8 @@ const SPAWN_MARGIN := 120.0
 ## São removidos quando ficam mais longe que (raio da tela * fator).
 const DESPAWN_FACTOR := 2.5
 const MAX_ASTEROIDS := 45
+## Máximo de minérios soltos na tela ao mesmo tempo.
+const MAX_ORES := 150
 ## Quantidade de minério por célula do asteroide destruído.
 const ORE_PER_CELL := 1.0
 ## Se true, asteroides que batem no jogador também soltam minério.
@@ -219,7 +221,20 @@ func _destroy_asteroid(a: Asteroid, drop_ore: bool) -> void:
 			ore.z_index = 1
 			add_child(ore)
 			ores.append(ore)
+		_trim_ores()
 	a.queue_free()
+
+
+## Limita os minérios soltos: remove os comuns mais antigos primeiro
+## (os de canhão só saem se não houver mais nenhum comum).
+func _trim_ores() -> void:
+	while ores.size() > MAX_ORES:
+		var victim: Ore = ores[0]
+		for ore in ores:
+			if ore.weapon == Weapons.NONE:
+				victim = ore
+				break
+		_remove_ore(victim)
 
 
 func _check_player_collisions() -> void:
@@ -241,22 +256,36 @@ func _check_player_collisions() -> void:
 # --- Minérios ---------------------------------------------------------------
 
 func _update_ores(delta: float) -> void:
+	var touching: Array[Ore] = []
 	for ore in ores.duplicate():
 		ore.step(delta, null if game_over else player)
 		if ore.life <= 0.0:
 			_remove_ore(ore)
 		elif not game_over and player.touches(ore):
-			player.absorb_at(ore.global_position, ore.weapon)
-			collected += 1
-			max_cells = maxi(max_cells, player.cells.size())
-			var screen_pos := _to_screen(ore.global_position)
-			if ore.weapon == Weapons.NONE:
-				fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
-				hud.popup("+1", UIStyle.GREEN, screen_pos, 13)
-			else:
-				fx.burst(ore.global_position, Weapons.color(ore.weapon), 16, 140.0)
-				hud.popup("+%s" % Weapons.NAMES[ore.weapon], Weapons.color(ore.weapon), screen_pos, 15)
-			_remove_ore(ore)
+			touching.append(ore)
+	if touching.is_empty():
+		return
+
+	# Absorve todos os minérios do frame de uma vez (bem mais barato em naves grandes).
+	player.absorb_many(touching.map(func(o): return [o.global_position, o.weapon]))
+	collected += touching.size()
+	max_cells = maxi(max_cells, player.cells.size())
+
+	# Minério comum: um único "+N" no meio dos que foram pegos neste frame.
+	var plain := 0
+	var plain_center := Vector2.ZERO
+	for ore in touching:
+		if ore.weapon == Weapons.NONE:
+			fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
+			plain += 1
+			plain_center += ore.global_position
+		else:
+			fx.burst(ore.global_position, Weapons.color(ore.weapon), 16, 140.0)
+			hud.popup("+%s" % Weapons.NAMES[ore.weapon], Weapons.color(ore.weapon),
+				_to_screen(ore.global_position), 15)
+		_remove_ore(ore)
+	if plain > 0:
+		hud.popup("+%d" % plain, UIStyle.GREEN, _to_screen(plain_center / plain), mini(13 + plain, 22))
 
 
 func _remove_ore(ore: Ore) -> void:

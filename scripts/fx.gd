@@ -13,6 +13,8 @@ var _vel := PackedVector2Array()
 var _life := PackedFloat32Array()
 var _max_life := PackedFloat32Array()
 var _color := PackedColorArray()
+## Todas as partículas vão numa só chamada de desenho.
+var _batch := TriBatch.new()
 
 
 func burst(at: Vector2, color: Color, count: int, speed: float) -> void:
@@ -66,9 +68,11 @@ func _draw() -> void:
 		var radius: float = r.radius * (1.0 - pow(1.0 - t, 3.0))
 		draw_circle(r.pos, radius, Color(c, 0.12 * (1.0 - t)))
 		draw_arc(r.pos, radius, 0.0, TAU, 48, Color(c.lightened(0.4), 1.0 - t), 3.0 * (1.0 - t) + 1.0, true)
+	_batch.clear()
 	for i in _pos.size():
 		var t := _life[i] / _max_life[i]
 		var c := _color[i]
 		c.a = t
 		var s := 2.0 + 3.0 * t
-		draw_rect(Rect2(_pos[i] - Vector2(s, s) * 0.5, Vector2(s, s)), c)
+		_batch.add_rect(Rect2(_pos[i] - Vector2(s, s) * 0.5, Vector2(s, s)), c)
+	_batch.draw(get_canvas_item())

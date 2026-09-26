@@ -24,11 +24,34 @@ var aim := Vector2.RIGHT
 var turning := false
 ## Vector2i -> segundos até o canhão daquela célula poder atirar de novo.
 var _cooldowns := {}
+## Células com canhão e contagem por tipo, atualizadas só quando a nave muda
+## (tiro, desenho e HUD rodam todo frame e não precisam varrer o casco).
+var _cannon_cells: Array[Vector2i] = []
+var _counts := {}
+
+# Buffers reaproveitados a cada frame para desenhar os canhões.
+var _sockets := TriBatch.new()
+var _glows := TriBatch.new()
+var _barrels_dark := PackedVector2Array()
+var _barrels_lit := PackedVector2Array()
+var _barrel_colors := PackedColorArray()
 
 
 func _init() -> void:
 	cells[CORE] = Weapons.COMMON
 	recompute_bounds()
+
+
+## Toda mudança de células ou canhões termina aqui.
+func recompute_bounds() -> void:
+	super.recompute_bounds()
+	_cannon_cells.clear()
+	_counts = {Weapons.COMMON: 0, Weapons.SHOTGUN: 0, Weapons.LASER: 0, Weapons.BOMB: 0}
+	for h in cells:
+		var w: int = cells[h]
+		if w != Weapons.NONE:
+			_cannon_cells.append(h)
+			_counts[w] += 1
 
 
 func step(delta: float) -> void:
@@ -50,7 +73,9 @@ func step(delta: float) -> void:
 
 	for h in _cooldowns:
 		_cooldowns[h] = maxf(_cooldowns[h] - delta, 0.0)
-	flash = maxf(flash - delta * 3.0, 0.0)
+	if flash > 0.0:
+		flash = maxf(flash - delta * 3.0, 0.0)
+		refresh_colors()
 	# Os canos acompanham a mira, então redesenha todo frame.
 	queue_redraw()
 
@@ -90,7 +115,7 @@ func fire() -> Array:
 	if not alive:
 		return []
 	var shots := []
-	for h in cells:
+	for h in _cannon_cells:
 		if not is_armed(h) or _cooldowns.get(h, 0.0) > 0.0:
 			continue
 		var w: int = cells[h]
@@ -102,11 +127,21 @@ func fire() -> Array:
 ## Transforma um minério que tocou a nave em uma nova célula (com o canhão
 ## do minério, se houver), no espaço livre mais próximo do ponto de contato.
 func absorb_at(global_p: Vector2, weapon: int = Weapons.NONE) -> Vector2i:
-	var h := _nearest_free_slot(global_to_grid(global_p))
-	cells[h] = weapon
+	return absorb_many([[global_p, weapon]])[0]
+
+
+## Absorve vários minérios de uma vez: [[posição global, canhão], ...].
+## Reorganiza os canhões e recalcula o raio uma vez só no final, para uma
+## chuva de minérios não varrer a nave inteira para cada um.
+func absorb_many(items: Array) -> Array[Vector2i]:
+	var added: Array[Vector2i] = []
+	for item in items:
+		var h := _free_slot_near(global_to_grid(item[0]))
+		cells[h] = item[1]
+		added.append(h)
 	_relocate_commons()
 	recompute_bounds()
-	return h
+	return added
 
 
 ## Coloca um canhão comum numa célula de casco da borda, do lado da mira.
@@ -133,12 +168,7 @@ func add_common_cannon() -> Vector2i:
 
 ## Quantidade de canhões de cada tipo.
 func weapon_counts() -> Dictionary:
-	var counts := {Weapons.COMMON: 0, Weapons.SHOTGUN: 0, Weapons.LASER: 0, Weapons.BOMB: 0}
-	for h in cells:
-		var w: int = cells[h]
-		if w != Weapons.NONE:
-			counts[w] += 1
-	return counts
+	return _counts.duplicate()
 
 
 ## Remove `amount` células (as mais distantes do core primeiro).
@@ -171,6 +201,34 @@ func take_damage(amount: int) -> PackedVector2Array:
 
 
 ## Espaço vazio adjacente à nave mais próximo de um ponto (espaço da grade).
+## O minério encosta na borda, então basta olhar os hexágonos em volta do
+## ponto de contato; a busca na nave inteira fica só de reserva.
+func _free_slot_near(grid_p: Vector2) -> Vector2i:
+	const SEARCH_RADIUS := 3
+	var start := Hex.from_pixel(grid_p)
+	var best := start
+	var best_dist := INF
+	for dq in range(-SEARCH_RADIUS, SEARCH_RADIUS + 1):
+		for dr in range(maxi(-SEARCH_RADIUS, -dq - SEARCH_RADIUS), mini(SEARCH_RADIUS, -dq + SEARCH_RADIUS) + 1):
+			var n := start + Vector2i(dq, dr)
+			if cells.has(n) or not _touches_ship(n):
+				continue
+			var dist := Hex.to_pixel(n).distance_squared_to(grid_p)
+			if dist < best_dist:
+				best_dist = dist
+				best = n
+	if best_dist < INF:
+		return best
+	return _nearest_free_slot(grid_p)
+
+
+func _touches_ship(h: Vector2i) -> bool:
+	for d in Hex.DIRS:
+		if cells.has(h + d):
+			return true
+	return false
+
+
 func _nearest_free_slot(grid_p: Vector2) -> Vector2i:
 	var best := CORE
 	var best_dist := INF
@@ -245,13 +303,7 @@ func outline_color(h: Vector2i) -> Color:
 
 func _draw() -> void:
 	super._draw()
-	for h in cells:
-		var w: int = cells[h]
-		if w == Weapons.NONE:
-			if h == CORE:
-				draw_circle(cell_local(h), Hex.SIZE * 0.35, Color(1, 1, 1, 0.9))
-			continue
-		_draw_cannon(h, w)
+	_draw_cannons()
 	if turning and alive:
 		_draw_heading()
 
@@ -266,18 +318,35 @@ func _draw_heading() -> void:
 	draw_dashed_line(Vector2(Hex.SIZE, 0), tip - Vector2(14, 0), Color(CORE_COLOR, 0.45), 2.0, 6.0)
 
 
-## Soquete escuro + cano apontando + luz que acende quando está carregado.
-func _draw_cannon(h: Vector2i, w: int) -> void:
-	var c := cell_local(h)
-	# _draw usa o espaço local da nave, então desfaz a rotação da direção global.
-	var dir := barrel_dir(h).rotated(-rotation)
-	var col := Weapons.color(w).lightened(0.55)
-	var armed := is_armed(h)
-	var ready: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
-	var barrel_width := 5.0 if w == Weapons.SHOTGUN or w == Weapons.BOMB else 3.5
-
-	draw_circle(c, Hex.SIZE * 0.45, SOCKET_COLOR)
-	draw_line(c, c + dir * Hex.SIZE * 0.95, SOCKET_COLOR, barrel_width + 2.0, true)
-	draw_line(c, c + dir * Hex.SIZE * 0.85, Color(col, 0.8 if armed else 0.25), barrel_width - 1.5, true)
-	var glow := (0.3 + 0.7 * ready) if armed else 0.15
-	draw_circle(c, Hex.SIZE * (0.18 + 0.1 * ready), Color(col, glow))
+## Canhões: soquete escuro + cano apontando + luz que acende quando está
+## carregado. Tudo em lote (4 chamadas no total, não 4 por canhão), porque
+## isso é redesenhado todo frame para os canos acompanharem a mira.
+func _draw_cannons() -> void:
+	_sockets.clear()
+	_glows.clear()
+	_barrels_dark.resize(0)
+	_barrels_lit.resize(0)
+	_barrel_colors.resize(0)
+	if weapon_at(CORE) == Weapons.NONE and cells.has(CORE):
+		_glows.add_disc(cell_local(CORE), Hex.SIZE * 0.35, Color(1, 1, 1, 0.9))
+	for h in _cannon_cells:
+		var w: int = cells[h]
+		var c := cell_local(h)
+		# _draw usa o espaço local da nave, então desfaz a rotação da direção global.
+		var dir := barrel_dir(h).rotated(-rotation)
+		var col := Weapons.color(w).lightened(0.55)
+		var armed := is_armed(h)
+		var ready: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
+		_sockets.add_disc(c, Hex.SIZE * 0.45, SOCKET_COLOR)
+		_barrels_dark.append(c)
+		_barrels_dark.append(c + dir * Hex.SIZE * 0.95)
+		_barrels_lit.append(c)
+		_barrels_lit.append(c + dir * Hex.SIZE * 0.85)
+		_barrel_colors.append(Color(col, 0.8 if armed else 0.25))
+		var glow := (0.3 + 0.7 * ready) if armed else 0.15
+		_glows.add_disc(c, Hex.SIZE * (0.18 + 0.1 * ready), Color(col, glow))
+	_sockets.draw(get_canvas_item())
+	if not _barrels_dark.is_empty():
+		draw_multiline(_barrels_dark, SOCKET_COLOR, 6.0)
+		draw_multiline_colors(_barrels_lit, _barrel_colors, 2.5)
+	_glows.draw(get_canvas_item())

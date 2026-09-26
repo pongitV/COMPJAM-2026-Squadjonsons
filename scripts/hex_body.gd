@@ -17,6 +17,18 @@ var bound_radius := Hex.SIZE
 ## 0..1, usado para piscar ao receber dano.
 var flash := 0.0
 
+# Malha em cache: todas as células viram UMA lista de triângulos e UMA
+# chamada de linhas, recalculadas só quando a forma ou as cores mudam.
+# Desenhar célula por célula custava milhares de draw calls por frame.
+var _geometry_dirty := true
+var _colors_dirty := true
+var _cell_order: Array = []
+var _points := PackedVector2Array()
+var _indices := PackedInt32Array()
+var _colors := PackedColorArray()
+var _outline := PackedVector2Array()
+var _outline_colors := PackedColorArray()
+
 
 func cell_local(h: Vector2i) -> Vector2:
 	return Hex.to_pixel(h) - center_offset
@@ -36,6 +48,13 @@ func recompute_bounds() -> void:
 	for h in cells:
 		bound_radius = maxf(bound_radius, cell_local(h).length())
 	bound_radius += Hex.SIZE
+	_geometry_dirty = true
+	queue_redraw()
+
+
+## Chame quando cell_color()/outline_color() passarem a devolver outra cor.
+func refresh_colors() -> void:
+	_colors_dirty = true
 	queue_redraw()
 
 
@@ -77,12 +96,50 @@ func _cell_within(h: Vector2i, grid_p: Vector2, radius: float) -> bool:
 
 
 func _draw() -> void:
+	if _geometry_dirty:
+		_rebuild_geometry()
+	if _colors_dirty:
+		_rebuild_colors()
+	if _points.is_empty():
+		return
+	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), _indices, _points, _colors)
+	draw_multiline_colors(_outline, _outline_colors, 1.5)
+
+
+## Cada célula: centro + 6 vértices (6 triângulos) e 6 segmentos de contorno.
+func _rebuild_geometry() -> void:
+	_geometry_dirty = false
+	_colors_dirty = true
+	_cell_order = cells.keys()
+	var n := _cell_order.size()
+	_points.resize(n * 7)
+	_indices.resize(n * 18)
+	_outline.resize(n * 12)
 	var corners := Hex.corners()
-	for h in cells:
-		var c := cell_local(h)
-		var poly := PackedVector2Array()
-		for p in corners:
-			poly.append(c + p)
-		draw_colored_polygon(poly, cell_color(h))
-		poly.append(poly[0])
-		draw_polyline(poly, outline_color(h), 1.5, true)
+	for i in n:
+		var c := cell_local(_cell_order[i])
+		var base := i * 7
+		_points[base] = c
+		for k in 6:
+			_points[base + 1 + k] = c + corners[k]
+			var t := i * 18 + k * 3
+			_indices[t] = base
+			_indices[t + 1] = base + 1 + k
+			_indices[t + 2] = base + 1 + (k + 1) % 6
+			_outline[i * 12 + k * 2] = c + corners[k]
+			_outline[i * 12 + k * 2 + 1] = c + corners[(k + 1) % 6]
+
+
+func _rebuild_colors() -> void:
+	_colors_dirty = false
+	var n := _cell_order.size()
+	_colors.resize(n * 7)
+	_outline_colors.resize(n * 6)
+	for i in n:
+		var h: Vector2i = _cell_order[i]
+		var fill := cell_color(h)
+		var line := outline_color(h)
+		for k in 7:
+			_colors[i * 7 + k] = fill
+		for k in 6:
+			_outline_colors[i * 6 + k] = line
