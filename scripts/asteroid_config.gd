@@ -50,7 +50,8 @@ extends Resource
 @export_range(1, 200, 1) var start_max_size := 3
 ## A cada tantos segundos o tamanho maximo cresce 1 celula (0 = nao cresce).
 @export_range(0.0, 120.0, 0.5, "suffix:s") var seconds_per_size := 10.0
-## Celulas a mais no tamanho maximo por canhao que o jogador tem.
+## Celulas a mais no tamanho maximo por celula de canhao que a nave tem
+## (um laser, feito de 10 comuns, conta 10).
 @export_range(0.0, 10.0, 0.1) var size_per_cannon := 1.5
 ## Controla o tamanho medio: o sorteio vai de min_size ate o maximo atual e
 ## a media fica em ~ min + (max - min) / (size_bias + 1).
@@ -98,11 +99,6 @@ extends Resource
 @export_range(0.0, 300.0, 1.0, "suffix:px/s") var ore_speed_max := 55.0
 ## Maximo de pedacos soltos na tela (os mais antigos somem).
 @export_range(1, 500, 1) var max_ores := 150
-## Chance de soltar um minerio de canhao especial:
-## base + celulas * por_celula, limitada a special_drop_max.
-@export_range(0.0, 1.0, 0.005) var special_drop_base := 0.06
-@export_range(0.0, 0.2, 0.005) var special_drop_per_cell := 0.025
-@export_range(0.0, 1.0, 0.05) var special_drop_max := 0.7
 
 
 ## Multiplicador de dificuldade depois de `elapsed` segundos de partida.
@@ -156,7 +152,3 @@ func roll_speed(cells: int) -> float:
 
 func roll_spin(cells: int) -> float:
 	return randf_range(-spin_max, spin_max) / sqrt(cells)
-
-
-func special_drop_chance(cells: int) -> float:
-	return clampf(special_drop_base + cells * special_drop_per_cell, 0.0, special_drop_max)

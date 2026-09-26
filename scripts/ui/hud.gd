@@ -58,15 +58,22 @@ func _ready() -> void:
 	for c in [cells_card, cannon_card, spacer, time_card]:
 		row.add_child(c)
 
-	# Linha de chegada: 60% da largura, centrada no rodape.
+	# Linha de chegada: 60% da largura, centrada no rodape, numa moldura
+	# longa de hexagonos.
+	var race_panel := PanelContainer.new()
+	race_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	race_panel.add_theme_stylebox_override("panel", UIStyle.frame(["card_race", "card"], UIStyle.PURPLE, HexFrame.SMALL, 4.0))
+	_root.add_child(race_panel)
+	race_panel.anchor_left = 0.2
+	race_panel.anchor_right = 0.8
+	race_panel.anchor_top = 1.0
+	race_panel.anchor_bottom = 1.0
+	race_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	race_panel.offset_top = -8.0
+	race_panel.offset_bottom = -8.0
 	race_bar = RaceBar.new()
-	_root.add_child(race_bar)
-	race_bar.anchor_left = 0.2
-	race_bar.anchor_right = 0.8
-	race_bar.anchor_top = 1.0
-	race_bar.anchor_bottom = 1.0
-	race_bar.offset_top = -50.0
-	race_bar.offset_bottom = -12.0
+	race_bar.custom_minimum_size.y = 36.0
+	race_panel.add_child(race_bar)
 
 	_hint = UIStyle.label("ESC  pausar / info", 11, Color(UIStyle.TEXT_DIM, 0.6), UIStyle.CAPTION)
 	_root.add_child(_hint)
@@ -115,7 +122,7 @@ func damage_flash(strength: float) -> void:
 func show_game_over(stats: Dictionary) -> void:
 	set_playing(false)
 	_hint.visible = false
-	race_bar.visible = false
+	race_bar.get_parent().visible = false
 	var dim := ColorRect.new()
 	dim.color = Color(0.0, 0.0, 0.02, 0.6)
 	var overlay := UISkin.replace("backdrop_game_over", dim, true)
@@ -127,8 +134,7 @@ func show_game_over(stats: Dictionary) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var panel := PanelContainer.new()
-	var style := UIStyle.frame(["panel_game_over", "panel"], UIStyle.RED, UIStyle.PANEL_BG, 16)
-	style.set_content_margin_all(24)
+	var style := UIStyle.frame(["panel_game_over", "panel"], UIStyle.RED, HexFrame.LARGE, 16.0)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 

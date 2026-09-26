@@ -1,7 +1,9 @@
 class_name Player
 extends HexBody
 ## Nave do jogador: um aglomerado de celulas conectadas a celula core.
-## Cada celula guarda o tipo de canhao que carrega (Weapons.NONE = casco).
+## Cada celula e casco (Weapons.NONE) ou canhao comum (Weapons.COMMON); canhoes
+## comuns em triangulo se fundem em shotgun, bomba ou laser (CannonGroups).
+## O nucleo tambem e um canhao comum, mas nunca se funde.
 
 signal core_destroyed
 
@@ -16,9 +18,6 @@ const TURN_SPEED := 3.5
 ## Azul dos detalhes da arte do nucleo (seta de giro, explosao, titulo).
 const CORE_COLOR := Color("#3a7bff")
 const HURT_COLOR := Color(1.0, 0.25, 0.2)
-## Contorno dos canhoes: a propria arte em preto, deslocada para os lados.
-const OUTLINE_COLOR := Color(0.0, 0.0, 0.0, 0.85)
-const OUTLINE_OFFSETS := [Vector2(1.2, 0), Vector2(-1.2, 0), Vector2(0, 1.2), Vector2(0, -1.2)]
 
 ## Alvos sao recalculados a esta frequencia (nao precisa ser todo frame).
 const RETARGET_INTERVAL := 0.1
@@ -26,17 +25,13 @@ const RETARGET_INTERVAL := 0.1
 var alive := true
 ## Posicao do mouse; a nave gira em direcao a ela segurando "rotate".
 var aim := Vector2.RIGHT
-## Vector2i (celula com canhao) -> Asteroid mais proximo no alcance.
+## Chave do grupo (Vector3i) -> Asteroid mais proximo no alcance.
 var _targets := {}
 var _retarget_timer := 0.0
 ## Girando em direcao a mira (tecla segurada).
 var turning := false
-## Vector2i -> segundos ate o canhao daquela celula poder atirar de novo.
+## Chave do grupo -> segundos ate aquele canhao poder atirar de novo.
 var _cooldowns := {}
-## Celulas com canhao e contagem por tipo, atualizadas so quando a nave muda
-## (tiro, desenho e HUD rodam todo frame e nao precisam varrer o casco).
-var _cannon_cells: Array[Vector2i] = []
-var _counts := {}
 
 # Buffer reaproveitado a cada frame para desenhar os canhoes.
 var _cannon_sprites := TriBatch.new()
@@ -47,16 +42,23 @@ func _init() -> void:
 	recompute_bounds()
 
 
-## Toda mudanca de celulas ou canhoes termina aqui.
-func recompute_bounds() -> void:
-	super.recompute_bounds()
-	_cannon_cells.clear()
-	_counts = {Weapons.COMMON: 0, Weapons.SHOTGUN: 0, Weapons.LASER: 0, Weapons.BOMB: 0}
-	for h in cells:
-		var w: int = cells[h]
-		if w != Weapons.NONE:
-			_cannon_cells.append(h)
-			_counts[w] += 1
+func _fixed_cells() -> Dictionary:
+	return {CORE: true}
+
+
+## Toda mudanca de celulas termina aqui: canhoes que deixaram de existir
+## perdem a recarga e o alvo.
+func refresh_groups() -> void:
+	super.refresh_groups()
+	var keys := {}
+	for g in groups:
+		keys[g.key] = true
+	for k in _cooldowns.keys():
+		if not keys.has(k):
+			_cooldowns.erase(k)
+	for k in _targets.keys():
+		if not keys.has(k):
+			_targets.erase(k)
 
 
 func step(delta: float) -> void:
@@ -76,8 +78,8 @@ func step(delta: float) -> void:
 		var max_step := TURN_SPEED * mass_factor * delta
 		rotation += clampf(diff, -max_step, max_step)
 
-	for h in _cooldowns:
-		_cooldowns[h] = maxf(_cooldowns[h] - delta, 0.0)
+	for k in _cooldowns:
+		_cooldowns[k] = maxf(_cooldowns[k] - delta, 0.0)
 	if flash > 0.0:
 		flash = maxf(flash - delta * 3.0, 0.0)
 		refresh_colors()
@@ -85,44 +87,27 @@ func step(delta: float) -> void:
 	queue_redraw()
 
 
-func weapon_at(h: Vector2i) -> int:
-	return cells.get(h, Weapons.NONE)
-
-
-## Celula da camada mais externa (tem ao menos um vizinho vazio).
-func is_outer(h: Vector2i) -> bool:
-	for d in Hex.DIRS:
-		if not cells.has(h + d):
-			return true
-	return false
-
-
-## Canhao comum so funciona na camada mais externa.
-func is_armed(h: Vector2i) -> bool:
-	var w := weapon_at(h)
-	return w != Weapons.NONE and (w != Weapons.COMMON or is_outer(h))
-
-
-## Direcao global do cano: o laser aponta para fora da nave (gira junto
-## com ela); os demais apontam para o alvo, ou para fora quando sem alvo.
-func barrel_dir(h: Vector2i) -> Vector2:
-	var d := cell_local(h).rotated(rotation)
-	var speed := Weapons.config.projectile_speed(weapon_at(h))
+## Direcao global do cano: o laser aponta para fora da nave (do nucleo para
+## o canhao, girando junto com ela); os demais apontam para o alvo, ou para
+## fora quando sem alvo.
+func barrel_dir(g: Dictionary) -> Vector2:
+	var d := group_local(g).rotated(rotation)
+	var speed := Weapons.config.projectile_speed(g.type)
 	if speed > 0.0:
-		var target := target_of(h)
+		var target := target_of(g)
 		if target != null:
-			d = _lead(cell_global(h), target, speed) - cell_global(h)
+			d = _lead(group_global(g), target, speed) - group_global(g)
 	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT.rotated(rotation)
 
 
-## Ponta do cano do canhao da celula (de onde saem tiros e o laser).
-func muzzle(h: Vector2i) -> Vector2:
-	return cell_global(h) + barrel_dir(h) * Art.muzzle_length(weapon_at(h))
+## Ponta do cano (de onde saem tiros e o laser).
+func muzzle(g: Dictionary) -> Vector2:
+	return group_global(g) + barrel_dir(g) * muzzle_length(g)
 
 
-## Alvo atual do canhao daquela celula (null se nao houver).
-func target_of(h: Vector2i) -> Asteroid:
-	var a = _targets.get(h)
+## Alvo atual do canhao (null se nao houver).
+func target_of(g: Dictionary) -> Asteroid:
+	var a = _targets.get(g.key)
 	if a == null or not is_instance_valid(a) or a.hp <= 0:
 		return null
 	return a
@@ -136,13 +121,12 @@ func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 		return
 	_retarget_timer = RETARGET_INTERVAL
 	_targets.clear()
-	for h in _cannon_cells:
-		var w: int = cells[h]
-		var origin := cell_global(h)
+	for g in groups:
+		var origin := group_global(g)
 		var best: Asteroid = null
-		var best_dist := Weapons.config.range_of(w)
-		if w == Weapons.LASER:
-			var tip := origin + barrel_dir(h) * best_dist
+		var best_dist := Weapons.config.range_of(g.type)
+		if g.type == Weapons.LASER:
+			var tip := origin + barrel_dir(g) * best_dist
 			for a in asteroids:
 				if a.hp <= 0:
 					continue
@@ -159,28 +143,28 @@ func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 					best_dist = dist
 					best = a
 		if best != null:
-			_targets[h] = best
+			_targets[g.key] = best
 
 
 ## Dispara os canhoes prontos que tem alvo.
-## Retorna uma lista de {type, cell, origin, dir, target_pos}.
+## Retorna uma lista de {type, key, origin, dir, target_pos}.
 func fire() -> Array:
 	if not alive:
 		return []
 	var shots := []
-	for h in _cannon_cells:
-		if not is_armed(h) or _cooldowns.get(h, 0.0) > 0.0:
+	for g in groups:
+		if _cooldowns.get(g.key, 0.0) > 0.0:
 			continue
-		var target := target_of(h)
+		var target := target_of(g)
 		if target == null:
 			continue
-		var w: int = cells[h]
-		var origin := muzzle(h)
-		_cooldowns[h] = Weapons.config.cooldown(w)
+		var w: int = g.type
+		var origin := muzzle(g)
+		_cooldowns[g.key] = Weapons.config.cooldown(w)
 		var target_pos := target.global_position
 		if w != Weapons.LASER:
 			target_pos = _lead(origin, target, Weapons.config.projectile_speed(w))
-		shots.append({"type": w, "cell": h, "origin": origin, "dir": barrel_dir(h), "target_pos": target_pos})
+		shots.append({"type": w, "key": g.key, "origin": origin, "dir": barrel_dir(g), "target_pos": target_pos})
 	return shots
 
 
@@ -194,7 +178,7 @@ func _lead(origin: Vector2, target: Asteroid, speed: float) -> Vector2:
 ## Onde um pedaco de minerio encaixaria no grid da nave, girado `turns`
 ## passos de 60 graus em relacao a ela. Procura perto da posicao atual do pedaco
 ## um lugar em que todas as celulas caibam e ao menos uma encoste na nave.
-## Retorna {celula da nave: canhao}, ou {} se nao houver encaixe a menos de
+## Retorna {celula da nave: tipo}, ou {} se nao houver encaixe a menos de
 ## `snap_dist`.
 func find_placement(piece: Ore, turns: int, snap_dist: float) -> Dictionary:
 	if not alive or piece.cells.is_empty():
@@ -228,7 +212,8 @@ func find_placement(piece: Ore, turns: int, snap_dist: float) -> Dictionary:
 	return best
 
 
-## Gruda um pedaco ja posicionado ({celula: canhao}, de find_placement).
+## Gruda um pedaco ja posicionado ({celula: tipo}, de find_placement).
+## Os canhoes comuns se fundem sozinhos se formarem triangulos.
 func attach_piece(placement: Dictionary) -> bool:
 	if not alive or placement.is_empty():
 		return false
@@ -241,42 +226,14 @@ func attach_piece(placement: Dictionary) -> bool:
 		return false
 	for slot in placement:
 		cells[slot] = placement[slot]
-	_relocate_commons()
 	recompute_bounds()
 	return true
 
 
-## Coloca um canhao comum numa celula de casco da borda, do lado da mira.
-## Sem casco livre na borda, a nave ganha uma celula nova com o canhao.
-func add_common_cannon() -> Vector2i:
-	# Direcao da mira no espaco local da nave (que pode estar girada).
-	var aim_dir := (aim - global_position).normalized().rotated(-rotation)
-	var best := CORE
-	var best_score := -INF
-	for h in cells:
-		if cells[h] != Weapons.NONE or not is_outer(h):
-			continue
-		var score := cell_local(h).normalized().dot(aim_dir)
-		if score > best_score:
-			best_score = score
-			best = h
-	if best_score == -INF:
-		best = _nearest_free_slot(Hex.to_pixel(CORE) + aim_dir * bound_radius)
-	cells[best] = Weapons.COMMON
-	_cooldowns.erase(best)
-	recompute_bounds()
-	return best
-
-
-## Quantidade de canhoes de cada tipo.
-func weapon_counts() -> Dictionary:
-	return _counts.duplicate()
-
-
-## Destroi uma celula atingida por um asteroide. Retorna true se era o
-## nucleo (fim de jogo). Chame settle_damage() depois da rodada de dano.
+## Destroi uma celula atingida. Retorna true se era o nucleo (fim de jogo).
+## Chame settle_damage() depois da rodada de dano.
 func destroy_cell(h: Vector2i) -> bool:
-	_remove_cell(h)
+	cells.erase(h)
 	if h == CORE:
 		alive = false
 		return true
@@ -284,8 +241,9 @@ func destroy_cell(h: Vector2i) -> bool:
 
 
 ## Fecha uma rodada de dano: partes que perderam a ligacao com o nucleo se
-## soltam inteiras (com seus canhoes). Retorna [{celula: canhao}, ...] para
-## o jogo transformar em pedacos flutuantes.
+## soltam inteiras (com seus canhoes). Retorna [{celula: tipo}, ...] para
+## o jogo transformar em pedacos flutuantes. Canhoes grandes que perderam
+## celulas se desfazem (as que sobraram voltam a se fundir no que der).
 func settle_damage() -> Array:
 	var reached := {CORE: true}
 	var queue: Array[Vector2i] = [CORE]
@@ -304,8 +262,7 @@ func settle_damage() -> Array:
 			piece[h] = cells[h]
 		detached.append(piece)
 	for h in loose:
-		_remove_cell(h)
-	_relocate_commons()
+		cells.erase(h)
 	flash = 1.0
 	recompute_bounds()
 	return detached
@@ -332,56 +289,13 @@ func _touches_ship(h: Vector2i) -> bool:
 	return false
 
 
-## Espaco vazio adjacente a nave mais proximo de um ponto (espaco da grade).
-func _nearest_free_slot(grid_p: Vector2) -> Vector2i:
-	var best := CORE
-	var best_dist := INF
-	for h in cells:
-		for d in Hex.DIRS:
-			var n: Vector2i = h + d
-			if cells.has(n):
-				continue
-			var dist := Hex.to_pixel(n).distance_squared_to(grid_p)
-			if dist < best_dist:
-				best_dist = dist
-				best = n
-	return best
-
-
-## Canhoes comuns que ficaram no meio da nave vao para o casco livre mais
-## proximo da borda. Sem casco livre na borda, ficam inativos ate abrir espaco.
-func _relocate_commons() -> void:
-	for h in cells.keys():
-		if cells[h] != Weapons.COMMON or is_outer(h):
-			continue
-		var target: Vector2i = h
-		var best_dist := 1 << 30
-		for c in cells:
-			if cells[c] != Weapons.NONE or not is_outer(c):
-				continue
-			var dist := Hex.distance(h, c)
-			if dist < best_dist:
-				best_dist = dist
-				target = c
-		if target != h:
-			cells[target] = Weapons.COMMON
-			cells[h] = Weapons.NONE
-			_cooldowns[target] = _cooldowns.get(h, 0.0)
-			_cooldowns.erase(h)
-
-
-func _remove_cell(h: Vector2i) -> void:
-	cells.erase(h)
-	_cooldowns.erase(h)
-
-
 ## Tinta das celulas: so o vermelho de dano (a arte ja tem as cores).
 func cell_color(_h: Vector2i) -> Color:
 	return Color.WHITE.lerp(HURT_COLOR, flash * 0.7)
 
 
 func cell_art(h: Vector2i) -> int:
-	return Art.CORE if h == CORE else Art.for_weapon(cells[h])
+	return Art.CORE if h == CORE else cannon_art(h, Art.HULL)
 
 
 func _draw() -> void:
@@ -401,30 +315,12 @@ func _draw_heading() -> void:
 	draw_dashed_line(Vector2(Hex.SIZE, 0), tip - Vector2(14, 0), Color(CORE_COLOR, 0.45), 2.0, 6.0)
 
 
-## Canhoes: a arte de cada um, girada em torno do proprio centro (no centro da celula)
-## para o cano apontar para o alvo, com um contorno escuro para destacar da
-## celula (que tem a mesma cor). Todos numa chamada so (atlas). Recarregando o
-## canhao fica mais escuro; comum preso no meio da nave fica bem apagado.
+## Canos apontando para o alvo; recarregando o canhao fica mais escuro.
 func _draw_cannons() -> void:
-	_cannon_sprites.clear()
-	for h in _cannon_cells:
-		var w: int = cells[h]
-		var size := Art.cannon_size(w) / 2
-		var pivot := Art.cannon_pivot(w) / 2
-		# _draw usa o espaco local da nave, entao desfaz a rotacao da direcao global.
-		# Na arte o cano aponta para cima (-Y).
-		var angle := barrel_dir(h).rotated(-rotation).angle() + PI / 2.0
-		var c := cell_local(h)
-		var corners := [
-			c + (-pivot).rotated(angle),
-			c + (Vector2(size.x, 0.0) - pivot).rotated(angle),
-			c + (size - pivot).rotated(angle),
-			c + (Vector2(0.0, size.y) - pivot).rotated(angle),
-		]
-		var uv := Art.cannon_uv(w)
-		for offset in OUTLINE_OFFSETS:
-			_cannon_sprites.add_quad(corners.map(func(p): return p + offset), uv, OUTLINE_COLOR)
-		var charged: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.config.cooldown(w)
-		var shade := (0.6 + 0.4 * charged) if is_armed(h) else 0.35
-		_cannon_sprites.add_quad(corners, uv, Color(shade, shade, shade))
-	_cannon_sprites.draw(get_canvas_item(), Art.cannon_atlas())
+	var dirs := {}
+	var shades := {}
+	for g in groups:
+		dirs[g.key] = barrel_dir(g)
+		var charged: float = 1.0 - _cooldowns.get(g.key, 0.0) / Weapons.config.cooldown(g.type)
+		shades[g.key] = 0.6 + 0.4 * charged
+	draw_barrels(_cannon_sprites, dirs, shades)

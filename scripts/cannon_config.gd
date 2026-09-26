@@ -4,6 +4,9 @@ extends Resource
 ## config/cannons.tres (ou duplique para criar presets e arraste o novo no
 ## campo "Cannon Config" do no Game). Dano e medido em "tiros do canhao
 ## comum": um asteroide de n celulas aguenta ~n^1.5 disso (ver AsteroidConfig).
+## Shotgun, bomba e laser sao triangulos de 3, 6 e 10 canhoes comuns
+## (CannonGroups). Os asteroides armados usam estes mesmos numeros, ajustados
+## pelo EnemyConfig.
 
 ## Os projeteis voam um pouco alem do alcance de mira (para acertar alvos em
 ## movimento); o missil tem folga extra antes de explodir sozinho.
@@ -54,25 +57,19 @@ const MISSILE_EXTRA_LIFE := 1.0
 @export_range(50.0, 2000.0, 10.0, "suffix:px") var bomb_range := 520.0
 @export_range(20.0, 2000.0, 10.0, "suffix:px/s") var bomb_speed := 200.0
 
-@export_group("Ganho de canhoes")
-## A cada tantos asteroides destruidos o jogador ganha um canhao comum.
-@export_range(1, 100, 1) var asteroids_per_common := 5
-## Chance relativa de cada canhao especial no minerio colorido (a chance de
-## vir um minerio colorido fica em AsteroidConfig).
-@export_range(0.0, 10.0, 0.05) var shotgun_weight := 0.45
-@export_range(0.0, 10.0, 0.05) var bomb_weight := 0.35
-@export_range(0.0, 10.0, 0.05) var laser_weight := 0.2
-
-
-## Segundos ate o canhao poder atirar de novo.
+## Segundos ate o canhao da nave poder atirar de novo.
 func cooldown(weapon: int) -> float:
-	var base: float = {
+	return base_cooldown(weapon) / fire_rate_multiplier
+
+
+## Recarga sem o multiplicador de cadencia da nave (base dos inimigos).
+func base_cooldown(weapon: int) -> float:
+	return {
 		Weapons.COMMON: common_cooldown,
 		Weapons.SHOTGUN: shotgun_cooldown,
 		Weapons.LASER: laser_cooldown,
 		Weapons.BOMB: bomb_cooldown,
 	}[weapon]
-	return base / fire_rate_multiplier
 
 
 ## Distancia maxima (ate a borda do asteroide) para escolher um alvo.
@@ -112,17 +109,3 @@ func damage(weapon: int) -> float:
 		Weapons.BOMB: bomb_damage,
 	}[weapon]
 	return base * damage_multiplier
-
-
-## Qual canhao especial vem no minerio colorido.
-func roll_special() -> int:
-	var weights := {Weapons.SHOTGUN: shotgun_weight, Weapons.BOMB: bomb_weight, Weapons.LASER: laser_weight}
-	var total := 0.0
-	for w in weights:
-		total += weights[w]
-	var r := randf() * total
-	for w in weights:
-		r -= weights[w]
-		if r <= 0.0 and weights[w] > 0.0:
-			return w
-	return Weapons.SHOTGUN

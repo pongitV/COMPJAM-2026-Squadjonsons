@@ -5,10 +5,15 @@ extends HexBody
 ## config.cell_charges celulas da nave (as que tocar) e depois some; se o
 ## asteroide se partir, os pedacos viram asteroides separados. Asteroides
 ## batem entre si. Os numeros de balanceamento ficam em AsteroidConfig.
+## Alguns nascem armados (EnemyConfig): celulas de canhao comum, que em
+## triangulo formam shotgun/bomba/laser, e atiram na nave (EnemyShots).
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
 ## Cor media da arte do asteroide (base do tingimento de dano e dos efeitos).
 const ART_COLOR := Color("#8a3b2c")
+## O cano brilha em vermelho nestes ultimos segundos antes de atirar.
+const TELEGRAPH := 0.4
+const TELEGRAPH_COLOR := Color(1.0, 0.25, 0.2)
 
 ## Parametros em uso (o jogo troca pelo preset escolhido no no Game).
 static var config: AsteroidConfig = preload("res://config/asteroids.tres")
@@ -21,18 +26,33 @@ var hp_scale := 1.0
 var base_color := Color.GRAY
 ## Vector2i -> cargas restantes daquela celula contra a nave.
 var charges := {}
+## Para onde os canhoes miram (a nave), atualizado pelo jogo.
+var aim_at := Vector2.ZERO
+## Chave do grupo -> segundos ate aquele canhao atirar (controlado pelo jogo).
+var cooldowns := {}
 var _damage_accum := 0.0
+var _barrels := TriBatch.new()
 
 
-func setup(n: int, hp_multiplier: float = 1.0) -> void:
+## `armament`: tipos de canhao (maiores primeiro, ver EnemyConfig.roll_armament).
+func setup(n: int, hp_multiplier: float = 1.0, armament: Array[int] = []) -> void:
 	hp_scale = hp_multiplier
 	cells.clear()
-	cells[Vector2i.ZERO] = true
-	# Cresce a partir de uma celula, colando vizinhos aleatorios.
+	# O maior canhao e a semente do formato, entao sempre cabe.
+	if armament.is_empty():
+		cells[Vector2i.ZERO] = Weapons.NONE
+	else:
+		var side: int = CannonGroups.SIDES.get(armament[0], 1)
+		for c in CannonGroups.triangle(Vector2i.ZERO, side, randf() < 0.5):
+			cells[c] = Weapons.COMMON
+	# Cresce colando vizinhos aleatorios.
 	while cells.size() < n:
 		var keys := cells.keys()
-		var h: Vector2i = keys[randi() % keys.size()]
-		cells[h + Hex.DIRS[randi() % 6]] = true
+		var h: Vector2i = keys[randi() % keys.size()] + Hex.DIRS[randi() % 6]
+		if not cells.has(h):
+			cells[h] = Weapons.NONE
+	for i in range(1, armament.size()):
+		_place_cannon(armament[i])
 	for h in cells:
 		charges[h] = config.cell_charges
 
@@ -43,12 +63,48 @@ func setup(n: int, hp_multiplier: float = 1.0) -> void:
 	recenter()
 
 
+## Poe um canhao onde o triangulo dele cabe em celulas de rocha, de
+## preferencia longe dos outros canhoes (para nao se fundirem sem querer).
+func _place_cannon(type: int) -> void:
+	var side: int = CannonGroups.SIDES.get(type, 1)
+	var apart := []
+	var touching := []
+	for h in cells:
+		for flip in [false, true]:
+			var tri := CannonGroups.triangle(h, side, flip)
+			if not tri.all(func(c: Vector2i) -> bool: return cells.get(c, Weapons.COMMON) == Weapons.NONE):
+				continue
+			var near_cannon := false
+			for c in tri:
+				for d in Hex.DIRS:
+					if cells.get(c + d, Weapons.NONE) == Weapons.COMMON:
+						near_cannon = true
+			(touching if near_cannon else apart).append(tri)
+	var options := apart if not apart.is_empty() else touching
+	if options.is_empty():
+		return
+	for c in options.pick_random():
+		cells[c] = Weapons.COMMON
+
+
 func step(delta: float) -> void:
 	position += velocity * delta
 	rotation += angular_velocity * delta
 	if flash > 0.0:
 		flash = maxf(flash - delta * 8.0, 0.0)
 		_update_tint()
+	if not groups.is_empty():
+		queue_redraw()  # os canos seguem a nave
+
+
+## Direcao global do cano (para a nave).
+func barrel_dir(g: Dictionary) -> Vector2:
+	var d := aim_at - group_global(g)
+	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT
+
+
+func muzzle(g: Dictionary) -> Vector2:
+	return group_global(g) + barrel_dir(g) * muzzle_length(g)
 
 
 ## Dano em unidades de "disparo do canhao comum". Aceita fracoes (dano
@@ -81,14 +137,14 @@ func remove_cells(keys: Array) -> Array[Asteroid]:
 	var pieces: Array[Asteroid] = []
 	if cells.is_empty():
 		return pieces
-	var groups := Hex.components(cells.keys())
-	groups.sort_custom(func(a, b): return a.size() > b.size())
+	var parts := Hex.components(cells.keys())
+	parts.sort_custom(func(a, b): return a.size() > b.size())
 	var hp_ratio := float(hp) / max_hp
-	for i in range(1, groups.size()):
+	for i in range(1, parts.size()):
 		var piece := Asteroid.new()
-		piece._split_from(self, groups[i], hp_ratio)
+		piece._split_from(self, parts[i], hp_ratio)
 		pieces.append(piece)
-		for h in groups[i]:
+		for h in parts[i]:
 			cells.erase(h)
 			charges.erase(h)
 	_resize(hp_ratio)
@@ -98,10 +154,12 @@ func remove_cells(keys: Array) -> Array[Asteroid]:
 
 func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
 	for h in keys:
-		cells[h] = true
+		cells[h] = source.cells[h]
 		charges[h] = source.charges[h]
 	base_color = source.base_color
 	hp_scale = source.hp_scale
+	cooldowns = source.cooldowns.duplicate()
+	aim_at = source.aim_at
 	rotation = source.rotation
 	position = source.position
 	center_offset = source.center_offset
@@ -190,5 +248,22 @@ func _update_tint() -> void:
 	self_modulate = Color(target.r / base_color.r, target.g / base_color.g, target.b / base_color.b)
 
 
-func cell_art(_h: Vector2i) -> int:
-	return Art.ASTEROID
+func cell_art(h: Vector2i) -> int:
+	return cannon_art(h, Art.ASTEROID)
+
+
+func _draw() -> void:
+	super._draw()
+	if groups.is_empty():
+		return
+	var dirs := {}
+	for g in groups:
+		dirs[g.key] = barrel_dir(g)
+	draw_barrels(_barrels, dirs, {})
+	# Aviso antes do tiro: brilho vermelho crescendo na ponta do cano.
+	for g in groups:
+		var left: float = cooldowns.get(g.key, INF)
+		if left < TELEGRAPH:
+			var k := 1.0 - left / TELEGRAPH
+			draw_circle(to_local(muzzle(g)), 2.0 + 4.0 * k * CannonGroups.art_scale(g.side),
+				Color(TELEGRAPH_COLOR, 0.35 + 0.55 * k))

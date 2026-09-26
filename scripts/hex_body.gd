@@ -7,9 +7,18 @@ extends Node2D
 const CONTACT_DIST := Hex.SQRT3 * Hex.SIZE * 0.92
 ## "Nenhuma celula" (retorno de find_cell_near).
 const NO_CELL := Vector2i(1 << 30, 1 << 30)
+## Tamanho dos canos desenhados em relacao a arte do canhao.
+const BARREL_SCALE := 0.5
+## Contorno dos canhoes: a propria arte em preto, deslocada para os lados.
+const OUTLINE_COLOR := Color(0.0, 0.0, 0.0, 0.85)
+const OUTLINE_OFFSETS := [Vector2(1.2, 0), Vector2(-1.2, 0), Vector2(0, 1.2), Vector2(0, -1.2)]
 
-## Vector2i (coordenada axial) -> dado da celula (true, ou o tipo de canhao)
+## Vector2i (coordenada axial) -> tipo da celula (Weapons.NONE ou COMMON)
 var cells: Dictionary = {}
+## Canhoes formados pelas celulas de canhao comum (ver CannonGroups).
+var groups: Array = []
+## Vector2i -> indice em `groups`.
+var _group_of := {}
 ## Deslocamento do centro de rotacao em relacao a celula (0, 0).
 var center_offset := Vector2.ZERO
 var velocity := Vector2.ZERO
@@ -49,8 +58,93 @@ func recompute_bounds() -> void:
 	for h in cells:
 		bound_radius = maxf(bound_radius, cell_local(h).length())
 	bound_radius += Hex.SIZE
+	refresh_groups()
 	_geometry_dirty = true
 	queue_redraw()
+
+
+## Recalcula os canhoes a partir das celulas (chamado a cada mudanca de forma).
+func refresh_groups() -> void:
+	groups = CannonGroups.find(cells, _fixed_cells())
+	_group_of.clear()
+	for i in groups.size():
+		for h in groups[i].cells:
+			_group_of[h] = i
+	_geometry_dirty = true
+
+
+## Celulas de canhao que nao se fundem em triangulos.
+func _fixed_cells() -> Dictionary:
+	return {}
+
+
+## Grupo que contem a celula ({} se ela nao for canhao).
+func group_at(h: Vector2i) -> Dictionary:
+	var i: int = _group_of.get(h, -1)
+	return groups[i] if i >= 0 else {}
+
+
+func group_by_key(key: Vector3i) -> Dictionary:
+	for g in groups:
+		if g.key == key:
+			return g
+	return {}
+
+
+func group_local(g: Dictionary) -> Vector2:
+	return g.center - center_offset
+
+
+func group_global(g: Dictionary) -> Vector2:
+	return global_transform * group_local(g)
+
+
+## Distancia do centro do canhao ate a ponta do cano.
+func muzzle_length(g: Dictionary) -> float:
+	return Art.muzzle_length(g.type) * BARREL_SCALE * CannonGroups.art_scale(g.side)
+
+
+## Arte da celula conforme o canhao a que ela pertence (ou `fallback`).
+func cannon_art(h: Vector2i, fallback: int) -> int:
+	var i: int = _group_of.get(h, -1)
+	return Art.for_weapon(groups[i].type) if i >= 0 else fallback
+
+
+## Quantidade de canhoes de cada tipo.
+func weapon_counts() -> Dictionary:
+	var counts := {Weapons.COMMON: 0, Weapons.SHOTGUN: 0, Weapons.LASER: 0, Weapons.BOMB: 0}
+	for g in groups:
+		counts[g.type] += 1
+	return counts
+
+
+## Desenha o cano de cada canhao, girado em torno do centro do grupo para
+## `dirs[key]` (direcao global), com contorno escuro e o tom de `shades[key]`.
+## Todos numa chamada so (atlas).
+func draw_barrels(batch: TriBatch, dirs: Dictionary, shades: Dictionary) -> void:
+	batch.clear()
+	for g in groups:
+		var w: int = g.type
+		var k := BARREL_SCALE * CannonGroups.art_scale(g.side)
+		var size := Art.cannon_size(w) * k
+		var pivot := Art.cannon_pivot(w) * k
+		# _draw usa o espaco local, entao desfaz a rotacao da direcao global.
+		# Na arte o cano aponta para cima (-Y).
+		var dir: Vector2 = dirs.get(g.key, Vector2.RIGHT.rotated(rotation))
+		var angle := dir.rotated(-rotation).angle() + PI / 2.0
+		var c := group_local(g)
+		var corners := [
+			c + (-pivot).rotated(angle),
+			c + (Vector2(size.x, 0.0) - pivot).rotated(angle),
+			c + (size - pivot).rotated(angle),
+			c + (Vector2(0.0, size.y) - pivot).rotated(angle),
+		]
+		var uv := Art.cannon_uv(w)
+		for offset in OUTLINE_OFFSETS:
+			batch.add_quad(corners.map(func(p): return p + offset), uv, OUTLINE_COLOR)
+		var shade: float = shades.get(g.key, 1.0)
+		batch.add_quad(corners, uv, Color(shade, shade, shade))
+	batch.draw(get_canvas_item(), Art.cannon_atlas())
 
 
 ## Chame quando cell_color() passar a devolver outra cor.

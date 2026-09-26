@@ -80,6 +80,7 @@ static func cell_icon(kind: int) -> AtlasTexture:
 
 ## Tamanho da flor no jogo (px).
 static func cell_size(kind: int) -> Vector2:
+	cell_atlas()
 	return _cell_size[kind] * cell_scale(kind)
 
 

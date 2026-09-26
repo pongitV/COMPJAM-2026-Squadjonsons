@@ -109,7 +109,7 @@ func _pop_in(panel: Control) -> void:
 
 
 func _build_main() -> Control:
-	var parts := Manual.make_panel("panel_pause", UIStyle.CYAN)
+	var parts := Manual.make_panel("panel_pause", UIStyle.PURPLE)
 	var col: VBoxContainer = parts[1]
 	Manual.title(col, "icon_pause", "HEXCORE", "PAUSADO", UIStyle.CYAN)
 

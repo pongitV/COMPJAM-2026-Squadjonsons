@@ -17,7 +17,6 @@ Tamanhos de referencia (px na tela):
   race_flag (mastro embaixo a esquerda)                 26 x 30
   icon_pause / icon_manual                              28 x 28
   icon_cannon_*                                         18 x 18
-  pip_full / pip_empty                                  14 x 14
   reticle                                               42 x 42
   key_arrow (apontando para a direita)                  12 x 18
   title_logo                                            tamanho real da imagem

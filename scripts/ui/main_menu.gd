@@ -91,7 +91,7 @@ func _spawn_drifter(at: Vector2) -> void:
 		var keys := rock.cells.keys().slice(0, randi_range(2, 4))
 		var weapons := {}
 		if randf() < 0.3:
-			weapons[keys[0]] = [Weapons.COMMON, Weapons.SHOTGUN, Weapons.LASER, Weapons.BOMB].pick_random()
+			weapons[keys[0]] = Weapons.COMMON
 		piece.setup_from(rock, keys, weapons)
 		rock.free()
 		body = piece
@@ -102,21 +102,26 @@ func _spawn_drifter(at: Vector2) -> void:
 	_drifters.append([body, Vector2.from_angle(randf() * TAU) * randf_range(8.0, 22.0), randf_range(-0.3, 0.3)])
 
 
-## Nave de exemplo: nucleo, casco e os quatro canhoes.
+## Nave de exemplo: nucleo, casco, canhoes comuns e os triangulos que eles
+## formam (shotgun, bomba e laser).
 func _build_showcase() -> void:
 	_showcase = Player.new()
 	_showcase.position = SHOWCASE_POS
 	add_child(_showcase)
 	for d in Hex.DIRS:
 		_showcase.attach_piece({d: Weapons.NONE})
-	var outer := [
-		[Vector2i(2, -1), Weapons.COMMON], [Vector2i(-2, 1), Weapons.SHOTGUN],
-		[Vector2i(0, -2), Weapons.LASER], [Vector2i(0, 2), Weapons.BOMB],
-		[Vector2i(2, 0), Weapons.NONE], [Vector2i(-2, 0), Weapons.NONE],
-		[Vector2i(1, -2), Weapons.NONE], [Vector2i(-1, 2), Weapons.NONE],
+	var triangles := [
+		[Vector2i(2, -1), 2, false],  # shotgun
+		[Vector2i(-2, 1), 3, true],   # bomba
+		[Vector2i(0, -2), 4, true],   # laser
 	]
-	for o in outer:
-		_showcase.attach_piece({o[0]: o[1]})
+	for t in triangles:
+		var piece := {}
+		for c in CannonGroups.triangle(t[0], t[1], t[2]):
+			piece[c] = Weapons.COMMON
+		_showcase.attach_piece(piece)
+	for c in [Vector2i(0, 2), Vector2i(1, 1)]:
+		_showcase.attach_piece({c: Weapons.COMMON})
 
 
 # --- Interface --------------------------------------------------------------

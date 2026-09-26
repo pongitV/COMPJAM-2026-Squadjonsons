@@ -28,7 +28,7 @@ func _init(caption: String, color: Color, id: String) -> void:
 	col.add_theme_constant_override("separation", 1)
 	col.custom_minimum_size.x = 86
 	row.add_child(col)
-	col.add_child(UIStyle.label(caption, 10, Color(color, 0.85), UIStyle.CAPTION))
+	col.add_child(UIStyle.label(caption, 10, color.lightened(0.35), UIStyle.CAPTION))
 	_value_label = UIStyle.label("0", 20, UIStyle.TEXT, UIStyle.DISPLAY)
 	col.add_child(_value_label)
 	_sub_label = UIStyle.label("", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION)

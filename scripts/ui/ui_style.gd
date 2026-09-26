@@ -1,9 +1,8 @@
 class_name UIStyle
 extends RefCounted
 ## Paleta, fontes e estilos compartilhados por toda a interface.
-## Os estilos desenhados aqui sao placeholders: paineis, botoes e chips usam
-## o sprite do slot correspondente quando ele existir (ver UISkin).
-## Cantos chanfrados (corner_detail = 1) ecoam o formato dos hexagonos.
+## Paineis, botoes e chips usam a moldura de hexagonos (HexFrame), na cor do
+## conteudo; um sprite de slot proprio (UISkin) tem prioridade sobre ela.
 
 const CYAN := Color(0.3, 0.8, 1.0)
 const GOLD := Color(1.0, 0.85, 0.35)
@@ -12,6 +11,8 @@ const RED := Color(1.0, 0.32, 0.28)
 const TEXT := Color(0.9, 0.97, 1.0)
 const TEXT_DIM := Color(0.55, 0.72, 0.85)
 const PANEL_BG := Color(0.02, 0.05, 0.1, 0.8)
+## Roxo da moldura de hexagonos original (paineis e botoes neutros).
+const PURPLE := Color(0.46, 0.3, 1.0)
 
 ## Tipos de fonte aceitos por label().
 enum { BODY, CAPTION, DISPLAY }
@@ -82,27 +83,11 @@ static func _hexagon(embolden: float, spacing: int, fallback_weight: int) -> Fon
 	return f
 
 
-static func panel(accent: Color = CYAN, bg: Color = PANEL_BG, cut: int = 10) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = Color(accent, 0.55)
-	s.set_border_width_all(1)
-	s.border_width_left = 3
-	s.set_corner_radius_all(cut)
-	s.corner_detail = 1
-	s.content_margin_left = 14
-	s.content_margin_right = 18
-	s.content_margin_top = 12
-	s.content_margin_bottom = 12
-	s.shadow_color = Color(accent, 0.15)
-	s.shadow_size = 10
-	return s
-
-
 ## Moldura de painel: sprite do slot (ou do primeiro de uma lista de slots)
-## ou, sem sprite, o panel() chanfrado na cor de destaque.
-static func frame(slots: Variant, accent: Color = CYAN, bg: Color = PANEL_BG, cut: int = 10) -> StyleBox:
-	return UISkin.stylebox(slots, panel(accent, bg, cut))
+## ou, sem sprite, a moldura de hexagonos (HexFrame) na cor do conteudo e na
+## espessura `scale`.
+static func frame(slots: Variant, accent: Color = PURPLE, scale: float = HexFrame.MEDIUM, pad: float = 6.0) -> StyleBox:
+	return UISkin.stylebox(slots, HexFrame.style(HexFrame.fill_for(accent), scale, pad))
 
 
 static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY) -> Label:
@@ -123,18 +108,7 @@ static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY
 ## "UP", "DOWN", "LEFT" e "RIGHT" viram setas desenhadas.
 static func key_chip(text: String) -> PanelContainer:
 	var chip := PanelContainer.new()
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(CYAN, 0.12)
-	s.border_color = Color(CYAN, 0.7)
-	s.set_border_width_all(1)
-	s.border_width_bottom = 3
-	s.set_corner_radius_all(5)
-	s.corner_detail = 1
-	s.content_margin_left = 8
-	s.content_margin_right = 8
-	s.content_margin_top = 4
-	s.content_margin_bottom = 5
-	chip.add_theme_stylebox_override("panel", UISkin.stylebox("key", s))
+	chip.add_theme_stylebox_override("panel", frame("key", CYAN, HexFrame.THIN, 2.0))
 	if text in ARROWS:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
 	else:
@@ -181,20 +155,12 @@ static func theme() -> Theme:
 	t.default_font_size = 17
 	t.set_color("font_color", "Label", TEXT)
 
-	var normal := panel(CYAN, Color(0.04, 0.09, 0.16, 0.9), 8)
-	normal.border_width_left = 1
-	normal.shadow_size = 0
-	var hover := normal.duplicate() as StyleBoxFlat
-	hover.bg_color = Color(CYAN, 0.2)
-	hover.border_color = CYAN
-	hover.border_width_left = 4
-	hover.shadow_color = Color(CYAN, 0.35)
-	hover.shadow_size = 14
-	var pressed := hover.duplicate() as StyleBoxFlat
-	pressed.bg_color = Color(CYAN, 0.4)
-	# Foco (teclado) tem o mesmo visual do hover; e desenhado sobre o "normal".
-	var focus := hover.duplicate() as StyleBoxFlat
-	focus.bg_color = Color(CYAN, 0.15)
+	# Botoes: a moldura de hexagonos fina; roxo parado, ciano com o mouse/foco
+	# (o foco e desenhado por cima do "normal") e dourado apertado.
+	var normal := HexFrame.style(HexFrame.fill_for(PURPLE).darkened(0.15), HexFrame.SMALL, 8.0)
+	var hover := HexFrame.style(HexFrame.fill_for(CYAN), HexFrame.SMALL, 8.0)
+	var pressed := HexFrame.style(HexFrame.fill_for(GOLD), HexFrame.SMALL, 8.0)
+	var focus := hover
 
 	# Estados sem sprite proprio usam o do estado mais proximo.
 	t.set_stylebox("normal", "Button", UISkin.stylebox("button_normal", normal))
@@ -208,8 +174,8 @@ static func theme() -> Theme:
 	t.set_color("font_color", "Button", TEXT)
 	t.set_color("font_hover_color", "Button", Color.WHITE)
 	t.set_color("font_focus_color", "Button", Color.WHITE)
-	t.set_color("font_pressed_color", "Button", GOLD)
-	t.set_color("font_hover_pressed_color", "Button", GOLD)
+	t.set_color("font_pressed_color", "Button", Color.WHITE)
+	t.set_color("font_hover_pressed_color", "Button", Color.WHITE)
 	t.set_stylebox("panel", "PanelContainer", frame("panel"))
 	var separator := UISkin.texture("separator")
 	if separator != null:
