@@ -39,7 +39,7 @@ func set_time(elapsed: float, duration: float) -> void:
 		_left.text = UIStyle.plain("CHEGADA!")
 		_left.add_theme_color_override("font_color", UIStyle.GOLD)
 	else:
-		_left.text = UIStyle.plain("FALTAM " + UIStyle.fmt_time(duration - elapsed))
+		_left.text = ""
 	_layout()
 	queue_redraw()
 

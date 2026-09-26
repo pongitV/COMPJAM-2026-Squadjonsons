@@ -38,6 +38,7 @@ const _ACCENTS := {
 static var _body_font: Font
 static var _display_font: Font
 static var _caption_font: Font
+static var _upper_font: Font
 static var _theme: Theme
 
 
@@ -60,6 +61,23 @@ static func caption_font() -> Font:
 	if _caption_font == null:
 		_caption_font = _hexagon(0.4, 3, 500)
 	return _caption_font
+
+
+## Letras que precisam aparecer em maiusculo (a Hexagon desenha maiusculas
+## e minusculas iguais, com cara de minuscula): saem na Orbitron. Ex.: a
+## tecla R de girar a nave.
+static func upper_font() -> Font:
+	if _upper_font == null:
+		var f := FontVariation.new()
+		f.base_font = ORBITRON
+		var wght := TextServerManager.get_primary_interface().name_to_tag("wght")
+		f.variation_opentype = {wght: 700}
+		_upper_font = f
+	return _upper_font
+
+
+## Teclas mostradas sempre em maiusculo (na Orbitron, ver upper_font).
+const UPPERCASE_KEYS := ["R"]
 
 
 ## Texto sem acentos (a Hexagon nao tem letras acentuadas).
@@ -113,7 +131,7 @@ static func key_chip(text: String) -> PanelContainer:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
 	else:
 		var l := label(text, 12, TEXT)
-		l.add_theme_font_override("font", display_font())
+		l.add_theme_font_override("font", upper_font() if text in UPPERCASE_KEYS else display_font())
 		chip.add_child(l)
 	return chip
 

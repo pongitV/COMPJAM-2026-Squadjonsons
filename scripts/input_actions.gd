@@ -7,7 +7,7 @@ extends RefCounted
 static func ensure_defaults() -> void:
 	var defaults := {
 		"pause": [_key(KEY_ESCAPE), _key(KEY_P)],
-		"rotate": [_mouse(MOUSE_BUTTON_RIGHT)],
+		"rotate": [_mouse(MOUSE_BUTTON_RIGHT), _key(KEY_R)],
 		"drag": [_mouse(MOUSE_BUTTON_LEFT)]
 	}
 	for action in defaults:

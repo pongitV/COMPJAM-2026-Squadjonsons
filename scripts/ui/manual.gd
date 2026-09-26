@@ -87,7 +87,7 @@ static func _controls() -> Control:
 		[["W", "A", "S", "D"], "mover (setas também)"],
 		[["Clique esquerdo"], "arrastar pedaço até a nave"],
 		[["Roda do mouse"], "girar o pedaço"],
-		[["Clique direito"], "girar a nave"],
+		[["R"], "girar a nave (ou clique direito)"],
 		[["ESC"], "pausar"],
 		[["R"], "recomeçar após o fim de jogo"],
 	]
@@ -108,10 +108,11 @@ static func _how_to_play() -> Control:
 	list.add_theme_constant_override("separation", 10)
 	_line(list, Art.CORE, "Proteja o núcleo: se ele cair, fim de jogo.")
 	_line(list, Art.COMMON, "Os canhões atiram sozinhos no asteroide mais próximo.")
-	_line(list, Art.ASTEROID, "Cada hexágono de asteroide que toca a nave destrói 2 dos seus.")
+	_line(list, Art.ASTEROID, "Asteroides batem e entram na nave: quanto maiores, mais fundo.")
 	_line(list, Art.SHOTGUN, "Asteroides armados atiram: cada acerto destrói 1 hexágono.")
 	_line(list, Art.ORE, "Destruídos, viram minério: arraste até a nave e encaixe.")
 	_line(list, Art.HULL, "Partes soltas da nave podem ser encaixadas de novo.")
+	_line(list, Art.CORE, "Na bandeira, derrote o MEGATRON: torretas, laser e núcleo.")
 	return list
 
 
@@ -121,7 +122,7 @@ static func _cannons() -> Control:
 	var cfg := Weapons.config
 	_line(list, Art.COMMON, "Tiro único. É o bloco de montar dos outros.",
 		"COMUM", Weapons.color(Weapons.COMMON))
-	_line(list, Art.SHOTGUN, "3 comuns em triângulo: %d tiros em leque." % cfg.shotgun_pellets,
+	_line(list, Art.SHOTGUN, "3 comuns em triângulo: %d tiros em leque." % cfg.shotgun_pellets(),
 		"SHOTGUN", Weapons.color(Weapons.SHOTGUN))
 	_line(list, Art.BOMB, "6 comuns em triângulo: míssil com dano em área.",
 		"BOMBA", Weapons.color(Weapons.BOMB))

@@ -84,9 +84,21 @@ extends Resource
 ## Velocidade extra dos pedacos quando um asteroide se parte na nave.
 @export_range(0.0, 200.0, 1.0, "suffix:px/s") var split_speed := 15.0
 
-@export_group("Dano na nave")
-## Quantas celulas da nave cada celula do asteroide destroi antes de sumir.
-@export_range(1, 10, 1) var cell_charges := 2
+@export_group("Batida na nave")
+## Quantas celulas da nave o asteroide destroi numa batida antes de voltar:
+## celulas * penetration_per_cell (no minimo penetration_min). Asteroides
+## maiores entram mais fundo. Cada celula da nave destruida quebra a celula
+## do asteroide que bateu nela.
+@export_range(0.0, 2.0, 0.01) var penetration_per_cell := 0.25
+@export_range(0, 20, 1) var penetration_min := 1
+## Elasticidade da batida com a nave (0 = para, 1 = quique perfeito).
+@export_range(0.0, 1.0, 0.05) var ship_bounce := 0.3
+## Velocidade minima de recuo de um asteroide de 1 celula; divide pela raiz
+## do tamanho (asteroides grandes recuam menos).
+@export_range(0.0, 500.0, 1.0, "suffix:px/s") var recoil_speed := 60.0
+## Massa de cada celula da nave em relacao a de uma celula de asteroide
+## (maior = a nave e menos empurrada nas batidas).
+@export_range(0.1, 10.0, 0.1) var ship_mass_per_cell := 1.0
 
 @export_group("Minerio")
 ## Fracao das celulas que se perde quando o asteroide vira minerio (canhoes
@@ -140,6 +152,11 @@ func max_size(elapsed: float, cannons: int) -> int:
 func roll_size(elapsed: float, cannons: int) -> int:
 	var top := max_size(elapsed, cannons)
 	return min_size + int(pow(randf(), size_bias) * (top - min_size + 1))
+
+
+## Celulas da nave que um asteroide deste tamanho destroi numa batida.
+func penetration_for(cells: int) -> int:
+	return maxi(penetration_min, roundi(cells * penetration_per_cell))
 
 
 ## `scale` = hp_scale() da hora em que o asteroide nasceu.

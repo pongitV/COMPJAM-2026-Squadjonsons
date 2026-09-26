@@ -1,10 +1,11 @@
 class_name Asteroid
 extends HexBody
 ## Aglomerado aleatorio de n celulas (n >= config.min_size), com HP dado por
-## config.max_hp_for(n). Ao encostar na nave, cada celula dele destroi
-## config.cell_charges celulas da nave (as que tocar) e depois some; se o
-## asteroide se partir, os pedacos viram asteroides separados. Asteroides
-## batem entre si. Os numeros de balanceamento ficam em AsteroidConfig.
+## config.max_hp_for(n). Anda em linha reta ate bater em algo. Ao bater na
+## nave, entra destruindo ate config.penetration_for(n) celulas dela (cada
+## uma quebra a celula do asteroide que bateu) e depois recua; se ele se
+## partir, os pedacos viram asteroides separados. Asteroides batem entre si.
+## Os numeros de balanceamento ficam em AsteroidConfig.
 ## Alguns nascem armados (EnemyConfig): celulas de canhao comum, que em
 ## triangulo formam shotgun/bomba/laser, e atiram na nave (EnemyShots).
 
@@ -24,17 +25,25 @@ var hp := 1
 ## Multiplicador de HP da dificuldade na hora em que nasceu (pedacos herdam).
 var hp_scale := 1.0
 var base_color := Color.GRAY
-## Vector2i -> cargas restantes daquela celula contra a nave.
-var charges := {}
+## Celulas da nave que ainda pode destruir na batida atual. Zera quando ele
+## recua e so recarrega depois que ele se afasta da nave (ver recharge_impact).
+var impact_budget := 0
 ## Para onde os canhoes miram (a nave), atualizado pelo jogo.
 var aim_at := Vector2.ZERO
 ## Chave do grupo -> segundos ate aquele canhao atirar (controlado pelo jogo).
 var cooldowns := {}
+## Tutorial: os tiros dele sempre erram e encostar nele nao machuca a nave.
+var harmless := false
+## Nao e empurrado nas batidas (o chefe): quem bate nele e que quica.
+var immovable := false
+## Tutorial: pedacos fixos (listas de celulas) em que ele se parte ao ser
+## destruido, sem perder nada; celulas fora deles viram poeira.
+var drop_pieces: Array = []
 var _damage_accum := 0.0
 var _barrels := TriBatch.new()
 
 
-## `armament`: tipos de canhao (maiores primeiro, ver EnemyConfig.roll_armament).
+## `armament`: tipos de canhao (maiores primeiro, ver EnemyConfig.roll_wave_armament).
 func setup(n: int, hp_multiplier: float = 1.0, armament: Array[int] = []) -> void:
 	hp_scale = hp_multiplier
 	cells.clear()
@@ -53,14 +62,24 @@ func setup(n: int, hp_multiplier: float = 1.0, armament: Array[int] = []) -> voi
 			cells[h] = Weapons.NONE
 	for i in range(1, armament.size()):
 		_place_cannon(armament[i])
-	for h in cells:
-		charges[h] = config.cell_charges
+	_finish_setup()
 
+
+## Asteroide de formato fixo (tutorial): `shape` = {celula: Weapons.NONE ou
+## Weapons.COMMON}.
+func setup_shape(shape: Dictionary, hp_multiplier: float = 1.0) -> void:
+	hp_scale = hp_multiplier
+	cells = shape.duplicate()
+	_finish_setup()
+
+
+func _finish_setup() -> void:
 	size = cells.size()
 	max_hp = config.max_hp_for(size, hp_scale)
 	hp = max_hp
 	base_color = ART_COLOR
 	recenter()
+	recharge_impact()
 
 
 ## Poe um canhao onde o triangulo dele cabe em celulas de rocha, de
@@ -120,11 +139,37 @@ func apply_damage(amount: float) -> void:
 	_update_tint()
 
 
-## Gasta uma carga da celula ao destruir uma celula da nave.
-## Retorna true quando a celula esgotou e deve sumir.
-func spend_charge(h: Vector2i) -> bool:
-	charges[h] -= 1
-	return charges[h] <= 0
+## Onde os canhoes da nave miram (visto de `from`). O chefe devolve a parte
+## vulneravel mais perto.
+func aim_point(_from: Vector2) -> Vector2:
+	return global_position
+
+
+## Distancia de `from` ate o que os canhoes da nave acertariam (para o alcance).
+func target_distance(from: Vector2) -> float:
+	return from.distance_to(global_position) - bound_radius
+
+
+## Tiro que acertou no ponto `p` (global). Asteroides comuns so tem a vida
+## do corpo inteiro; o chefe (Boss) danifica a celula atingida.
+func damage_at(_p: Vector2, amount: float) -> void:
+	apply_damage(amount)
+
+
+## Raio de p0 a p1 passando por ele.
+func damage_beam(_p0: Vector2, _p1: Vector2, amount: float) -> void:
+	apply_damage(amount)
+
+
+## Explosao em `center` (so chamado se ele estiver dentro do raio).
+func damage_area(_center: Vector2, _radius: float, amount: float) -> void:
+	apply_damage(amount)
+
+
+## Longe da nave: a proxima batida volta a entrar com toda a forca.
+## Asteroide inofensivo (tutorial) so quica.
+func recharge_impact() -> void:
+	impact_budget = 0 if harmless else config.penetration_for(cells.size())
 
 
 ## Remove celulas esgotadas. Partes que ficarem desconectadas viram novos
@@ -133,7 +178,6 @@ func spend_charge(h: Vector2i) -> bool:
 func remove_cells(keys: Array) -> Array[Asteroid]:
 	for h in keys:
 		cells.erase(h)
-		charges.erase(h)
 	var pieces: Array[Asteroid] = []
 	if cells.is_empty():
 		return pieces
@@ -146,7 +190,6 @@ func remove_cells(keys: Array) -> Array[Asteroid]:
 		pieces.append(piece)
 		for h in parts[i]:
 			cells.erase(h)
-			charges.erase(h)
 	_resize(hp_ratio)
 	recenter()
 	return pieces
@@ -155,10 +198,12 @@ func remove_cells(keys: Array) -> Array[Asteroid]:
 func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
 	for h in keys:
 		cells[h] = source.cells[h]
-		charges[h] = source.charges[h]
+	# Pedaco que se soltou na batida so machuca depois de se afastar.
+	impact_budget = 0
 	base_color = source.base_color
 	hp_scale = source.hp_scale
 	cooldowns = source.cooldowns.duplicate()
+	harmless = source.harmless
 	aim_at = source.aim_at
 	rotation = source.rotation
 	position = source.position
@@ -206,13 +251,15 @@ func collide_with(other: Asteroid) -> void:
 	normal = normal.normalized()
 	if normal == Vector2.ZERO:
 		normal = (small.global_position - big.global_position).normalized()
-	# A normal aponta de `big` para `small`.
-	var inv_small := 1.0 / small.cells.size()
-	var inv_big := 1.0 / big.cells.size()
+	# A normal aponta de `big` para `small`. Corpo imovel = massa infinita.
+	var inv_small := 0.0 if small.immovable else 1.0 / small.cells.size()
+	var inv_big := 0.0 if big.immovable else 1.0 / big.cells.size()
+	if inv_small + inv_big <= 0.0:
+		return
 	var r_small := contact - small.global_position
 	var r_big := contact - big.global_position
-	var inv_i_small := 1.0 / small._inertia()
-	var inv_i_big := 1.0 / big._inertia()
+	var inv_i_small := 0.0 if small.immovable else 1.0 / small._inertia()
+	var inv_i_big := 0.0 if big.immovable else 1.0 / big._inertia()
 	var v_small := small.velocity + Vector2(-small.angular_velocity * r_small.y, small.angular_velocity * r_small.x)
 	var v_big := big.velocity + Vector2(-big.angular_velocity * r_big.y, big.angular_velocity * r_big.x)
 	var approach := (v_small - v_big).dot(normal)
@@ -230,6 +277,36 @@ func collide_with(other: Asteroid) -> void:
 	var push := normal * depth * 0.8 / (inv_small + inv_big)
 	small.position += push * inv_small
 	big.position -= push * inv_big
+
+
+## Recuo depois de gastar a penetracao numa batida na nave: impulso no ponto
+## de contato (massa = celulas; cada celula da nave pesa
+## config.ship_mass_per_cell), com elasticidade config.ship_bounce e um recuo
+## minimo que diminui com o tamanho. Tambem separa os dois.
+## `normal` aponta da nave para o asteroide.
+func bounce_off(ship: Player, normal: Vector2, contact: Vector2, depth: float) -> void:
+	var inv_a := 0.0 if immovable else 1.0 / cells.size()
+	var inv_s := 1.0 / maxf(ship.cells.size() * config.ship_mass_per_cell, 0.1)
+	var r := contact - global_position
+	var inv_i := 0.0 if immovable else 1.0 / _inertia()
+	var rel := velocity + Vector2(-angular_velocity * r.y, angular_velocity * r.x) - ship.velocity
+	var approach := rel.dot(normal)
+	if approach < 0.0:
+		var rn := r.cross(normal)
+		var j := -(1.0 + config.ship_bounce) * approach / (inv_a + inv_s + rn * rn * inv_i)
+		velocity += normal * j * inv_a
+		ship.velocity -= normal * j * inv_s
+		angular_velocity = clampf(angular_velocity + rn * j * inv_i, -config.spin_limit, config.spin_limit)
+	# Recuo minimo em relacao a nave e ao espaco (a nave freia sozinha logo
+	# depois, entao so o relativo deixaria o asteroide grande voltar a encostar).
+	var min_speed := config.recoil_speed / sqrt(cells.size())
+	var need := maxf(min_speed - velocity.dot(normal), min_speed - (velocity - ship.velocity).dot(normal))
+	if need > 0.0 and not immovable:
+		velocity += normal * need
+	# Separa proporcionalmente a massa (o mais leve anda mais).
+	var push := normal * depth / (inv_a + inv_s)
+	position += push * inv_a
+	ship.position -= push * inv_s
 
 
 ## Momento de inercia (celulas de massa 1 distribuidas em volta do centro).

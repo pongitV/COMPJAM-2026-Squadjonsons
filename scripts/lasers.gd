@@ -35,7 +35,7 @@ func step(delta: float, player: Player, asteroids: Array[Asteroid], fx: Fx) -> v
 		var p1 := p0 + player.barrel_dir(g) * length
 		for a in asteroids:
 			if a.hp > 0 and _beam_hits(a, p0, p1):
-				a.apply_damage(dps * delta)
+				a.damage_beam(p0, p1, dps * delta)
 				if randf() < 0.25:
 					fx.burst(Geometry2D.get_closest_point_to_segment(a.global_position, p0, p1),
 						Weapons.color(Weapons.LASER).lightened(0.4), 1, 90.0)
@@ -72,9 +72,10 @@ func _draw() -> void:
 
 ## Desenha um raio que liga rapido, desliga suave e tremula um pouco
 ## (usado tambem pelos lasers dos asteroides).
-static func draw_beam(ci: CanvasItem, p0: Vector2, p1: Vector2, color: Color, left: float, duration: float, t: float) -> void:
+static func draw_beam(ci: CanvasItem, p0: Vector2, p1: Vector2, color: Color, left: float, duration: float, t: float,
+		width: float = Weapons.LASER_WIDTH) -> void:
 	var fade := clampf((duration - left) / 0.08, 0.0, 1.0) * clampf(left / 0.25, 0.0, 1.0)
-	var w := Weapons.LASER_WIDTH * fade * (1.0 + 0.15 * sin(t * 45.0))
+	var w := width * fade * (1.0 + 0.15 * sin(t * 45.0))
 	ci.draw_line(p0, p1, Color(color, 0.18 * fade), w * 3.5, true)
 	ci.draw_line(p0, p1, Color(color, 0.9 * fade), w, true)
 	ci.draw_line(p0, p1, Color(1, 0.9, 0.95, fade), w * 0.35, true)

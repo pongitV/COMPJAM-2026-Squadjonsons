@@ -11,16 +11,27 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | Mover | WASD / setas |
 | Arrastar pedaço de minério até a nave | Clique esquerdo (segurar e soltar onde o encaixe aparecer) |
 | Girar o pedaço arrastado | Roda do mouse |
-| Girar a nave para o mouse | Clique direito (segurar) |
+| Girar a nave para o mouse | R ou clique direito (segurar) |
 | Pausar / info | ESC (ou P) |
 | Tela cheia / janela | F11 (ou Alt+Enter) |
 | Reiniciar (após game over) | R |
 
 ## Regras
+- **Tutorial** (toda partida começa com ele; **ENTER** pula): primeiro vem só um meteoro de 4 hexágonos, que o núcleo destrói sozinho e que sempre se parte em 2 pedaços de 2; o jogo entra em câmera lenta e explica a **montagem** (arrastar pedaços até a nave). Depois vem um inimigo que sempre erra os tiros: uma rocha com uma peça de cada lado, cada peça com 1 canhão; ao ser destruído ele solta essas 2 peças. Câmera lenta pedindo para encaixá-las e, com os dois canhões encaixados, abre uma janela grande (jogo pausado) com as **formações** de cada arma (3, 6 e 10 canhões em triângulo) e o aviso de que o canhão do núcleo não conta. Por fim, câmera lenta e explicação do **giro da nave** (R). A câmera lenta acaba quando o jogador faz o que o texto pede; os asteroides do tutorial não machucam a nave, e o relógio da corrida (dificuldade e chegada) só começa depois dele. Para desligar: campo **Tutorial Enabled** do nó `Game`.
 - **Jogador**: começa com 1 célula, a *core* (branca com detalhes azuis), com um canhão comum. Só células com canhão atiram, **sozinhas**: cada canhão mira no asteroide mais próximo dele (com mira antecipada). As demais células são casco e protegem a core.
-- **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e batem entre si (quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. O dano na nave é por contato: cada célula do asteroide que encosta na nave destrói a célula da nave que ela tocou; depois de destruir 2, ela some (se o asteroide se partir, as partes seguem como asteroides separados; partes com menos de 3 células viram poeira). Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
-- **Asteroides armados**: alguns asteroides nascem com canhões (os mesmos da nave) e atiram nela; cada acerto destrói uma célula da nave ou de um pedaço de minério solto (o pedaço se parte se ficar desconectado). O cano brilha em vermelho logo antes do tiro. Conforme a barra de chegada avança, mais asteroides vêm armados, com canhões maiores e atirando mais rápido e com mais precisão (`config/enemies.tres`).
-- **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
+- **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e mudam de direção quando batem entre si (armados ou não) ou na nave (quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. Ao bater na nave, o asteroide entra destruindo as células que toca, até um limite que cresce com o tamanho dele (padrão: 1 célula a cada 4 do asteroide, no mínimo 1); cada célula da nave destruída quebra a célula do asteroide que bateu nela. Depois ele recua levemente (os grandes recuam menos e empurram mais a nave) e só volta a machucar depois de se afastar. Se o asteroide se partir, as partes seguem como asteroides separados; partes com menos de 3 células viram poeira. Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
+- **Inimigos (asteroides armados)**: têm canhões (os mesmos da nave) e atiram nela; cada acerto destrói uma célula da nave ou de um pedaço de minério solto. O cano brilha em vermelho logo antes do tiro. Os asteroides comuns nascem sem canhões; os inimigos seguem ondas por minuto da corrida (`config/enemies.tres`):
+
+| Minuto | Máx. ao mesmo tempo | Inimigos que podem aparecer |
+|---|---|---|
+| 0–1 | 2 (spawn baixo e controlado) | 1 a 3 canhões comuns |
+| 1–2 | 2 (spawn mais rápido) | idem |
+| 2–3 | 3 | + 1 a 2 shotguns |
+| 3–4 | 3 | + 1 bomba |
+| 4–5 | 4 | + mistos (até 3 canhões, podendo ter 1 laser) |
+
+- **MEGATRON (chefe)**: na bandeira de chegada (5 min) os asteroides e inimigos param de vir e o MEGATRON entra pela direita: enorme e alto, de casco branco e núcleo como os da nave, com o laser gigante na frente, bombas no meio, canhões comuns no meio-termo e shotguns nas pontas. Ele sobe e desce; antes do laser gigante para, mostra uma faixa de aviso por 3 s e dispara por 5 s reto para a esquerda, cortando a tela. A luta tem 3 fases: primeiro as **torretas** (fáceis de destruir; o laser e o núcleo ficam com escudo), depois o **laser gigante** e por fim o **núcleo**. O casco quebra como o da nave: partes que perdem a ligação com o núcleo se soltam como pedaços que dá para pegar. Destruir o núcleo **vence o jogo** (tela de vitória).
+- **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços soltos derivam devagar para a esquerda, atravessando tudo, e não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
 
 ### Canhões
 O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em **triângulo** se fundem num único canhão maior que ocupa o triângulo todo (os maiores têm prioridade). O núcleo é um canhão comum que nunca se funde. Se uma célula de um canhão grande for destruída, ele se desfaz e as células que sobraram voltam a se fundir no maior triângulo que ainda formarem (ex.: um laser que perde uma ponta vira bomba + comuns). Canhões funcionam em qualquer lugar da nave.
@@ -28,7 +39,7 @@ O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em *
 | Canhão | Cor | Formação | Como funciona |
 |---|---|---|---|
 | Comum | Azul | 1 célula | Tiro único no asteroide mais próximo |
-| Shotgun | Laranja | Triângulo de 3 comuns | Tiros em leque no asteroide mais próximo, alcance curto |
+| Shotgun | Laranja | Triângulo de 3 comuns | 5 tiros por disparo (1 no centro e 2 abrindo para cada lado), mesmo alcance do canhão comum |
 | Bomba | Roxo | Triângulo de 6 comuns | Míssil lento lançado no asteroide mais próximo, explode com dano em área |
 | Laser | Vermelho | Triângulo de 10 comuns | Dispara quando um asteroide cruza sua linha: raio para fora da nave (do núcleo para o canhão) com dano contínuo; gire a nave (clique direito) para mirar |
 
@@ -38,6 +49,7 @@ O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em *
 | `scripts/hex.gd` | Matemática da grade hexagonal (lado plano em cima, coordenadas axiais) |
 | `scripts/art.gd`, `art/` | Artes das células (flores de 19 hexágonos) e dos canhões, juntadas em atlas |
 | `scripts/hex_body.gd` | Base de todo objeto feito de células: desenho, colisão e canhões (grupos e canos) |
+| `scripts/tutorial.gd`, `scripts/ui/tutorial_panel.gd`, `scripts/ui/formation_window.gd` | Tutorial do início da partida (etapas, câmera lenta, asteroides do tutorial), a caixa de texto dele e a janela das formações dos canhões |
 | `scripts/cannon_groups.gd` | Fusão de canhões comuns em triângulos (shotgun, bomba, laser) |
 | `scripts/player.gd` | Movimento, giro, canhões (mira automática), encaixe de pedaços e dano |
 | `scripts/weapons.gd` | Tipos de canhão: cores e nomes |
@@ -83,7 +95,7 @@ Para trocar uma peça específica pela sua arte, salve um PNG em `art/ui/` com o
 | Slots | O que são | Como é encaixado |
 |---|---|---|
 | `card`, `card_cells`, `card_time`, `card_cannons`, `card_record` | Molduras dos cards (`card` vale para os que não tiverem a sua) | 9-slice |
-| `panel`, `panel_pause`, `panel_manual`, `panel_game_over` | Molduras dos painéis (`panel` vale para todos) | 9-slice |
+| `panel`, `panel_pause`, `panel_manual`, `panel_game_over`, `panel_tutorial`, `panel_formations` | Molduras dos painéis (`panel` vale para todos) | 9-slice |
 | `button_normal`, `button_hover`, `button_pressed`, `button_focus` | Estados dos botões e abas (os que faltarem usam o estado mais próximo) | 9-slice |
 | `key`, `separator` | Chip de tecla do manual e linha separadora | 9-slice / estica na largura |
 | `icon_cells`, `icon_time`, `icon_record`, `icon_pause`, `icon_manual`, `icon_cannon_*` | Ícones dos cards e títulos (pulsam, não giram) | Cabe no tamanho do placeholder |
@@ -104,7 +116,7 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 | Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
 | Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
 | Movimento | faixa de velocidade, multiplicador para pequenos/grandes, giro inicial e máximo, elasticidade das batidas, velocidade ao se partir |
-| Dano na nave | quantas células da nave cada célula do asteroide destrói |
+| Batida na nave | quantas células da nave o asteroide destrói por célula dele (profundidade), mínimo por batida, elasticidade, recuo mínimo, massa da nave |
 | Minério | fração perdida, em quantos pedaços se parte (tamanho até o qual não se parte, células por pedaço a mais, variação), velocidade dos pedaços, máximo na tela |
 
 ## Viagem (fundo e chegada)
@@ -124,7 +136,7 @@ Ficam em `config/cannons.tres` (padrões e explicação em `scripts/cannon_confi
 |---|---|
 | Geral | multiplicador de dano e de cadência de todos os canhões |
 | Comum | recarga, dano, alcance, velocidade do tiro |
-| Shotgun | recarga, nº de projéteis, dano por projétil, alcance, abertura do leque, velocidade |
+| Shotgun | recarga, tiros de cada lado do central, dano por projétil, abertura do leque, velocidade (o alcance é o do comum) |
 | Laser | recarga, duração do raio, dano por segundo, comprimento |
 | Bomba | recarga, dano e raio da explosão, alcance, velocidade do míssil |
 
@@ -133,7 +145,8 @@ Ficam em `config/enemies.tres` (explicações em `scripts/enemy_config.gd`), com
 
 | Grupo | Parâmetros |
 |---|---|
-| Armamento | chance de nascer armado, máximo de canhões por asteroide, folga de tamanho (o asteroide precisa ter as células do canhão + folga), fração máxima de células que podem ser canhão, chance relativa de cada canhão |
+| Ondas | máximo de inimigos vivos e intervalo entre eles por minuto, atraso do primeiro, minuto em que entram shotgun, bomba e mistos, máximo de canhões dos mistos, células de rocha além dos canhões |
+| Chefe | vida do casco (por célula), das torretas, do laser gigante e do núcleo, velocidade de entrada e distância da borda, patrulha (amplitude e velocidade), recarga, alcance dos tiros, laser gigante (recarga, aviso, duração, espessura, comprimento), dano ao encostar, pontos |
 | Força | multiplicador de recarga, velocidade dos projéteis, erro de mira, alcance, espera antes do primeiro tiro, projéteis da shotgun, raio da bomba, tempo do laser para destruir uma célula |
 Os demais parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: `SIZE` em `hex.gd`, movimento da nave em `player.gd`).
 

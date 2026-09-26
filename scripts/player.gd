@@ -147,7 +147,7 @@ func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 			for a in asteroids:
 				if a.hp <= 0:
 					continue
-				var dist := origin.distance_to(a.global_position) - a.bound_radius
+				var dist := a.target_distance(origin)
 				if dist < best_dist:
 					best_dist = dist
 					best = a
@@ -170,7 +170,7 @@ func fire() -> Array:
 		var w: int = g.type
 		var origin := muzzle(g)
 		_cooldowns[g.key] = Weapons.config.cooldown(w)
-		var target_pos := target.global_position
+		var target_pos := target.aim_point(origin)
 		if w != Weapons.LASER:
 			target_pos = _lead(origin, target, Weapons.config.projectile_speed(w))
 		shots.append({"type": w, "key": g.key, "origin": origin, "dir": barrel_dir(g), "target_pos": target_pos})
@@ -180,8 +180,9 @@ func fire() -> Array:
 ## Onde o alvo vai estar quando o projetil chegar (mira a frente). Usa a
 ## velocidade relativa porque os projeteis herdam a velocidade da nave.
 func _lead(origin: Vector2, target: Asteroid, speed: float) -> Vector2:
-	var t := origin.distance_to(target.global_position) / speed
-	return target.global_position + (target.velocity - velocity) * t
+	var aim := target.aim_point(origin)
+	var t := origin.distance_to(aim) / speed
+	return aim + (target.velocity - velocity) * t
 
 
 ## Onde um pedaco de minerio encaixaria no grid da nave, girado `turns`

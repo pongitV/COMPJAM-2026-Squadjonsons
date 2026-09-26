@@ -1,7 +1,8 @@
 class_name Hud
 extends CanvasLayer
 ## Interface durante o jogo: cards de status, linha de chegada no rodape,
-## textos flutuantes, vinheta de dano, mira hexagonal e tela de game over.
+## barra de vida do chefe, textos flutuantes, vinheta de dano, mira hexagonal
+## e as telas de game over e de vitoria.
 
 signal restart_requested
 signal menu_requested
@@ -17,6 +18,9 @@ var _vignette: TextureRect
 var _vignette_tween: Tween
 var _reticle: Reticle
 var _hint: Label
+var _boss_panel: PanelContainer
+var _boss_bar: BossBar
+var _boss_title: Label
 
 
 func _init() -> void:
@@ -75,6 +79,24 @@ func _ready() -> void:
 	race_bar.custom_minimum_size.y = 36.0
 	race_panel.add_child(race_bar)
 
+	# Vida do chefe: no alto, centralizada, so durante a luta.
+	_boss_panel = PanelContainer.new()
+	_boss_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_boss_panel.add_theme_stylebox_override("panel", UIStyle.frame(["card_boss", "card"], UIStyle.RED, HexFrame.SMALL, 6.0))
+	_root.add_child(_boss_panel)
+	_boss_panel.anchor_left = 0.3
+	_boss_panel.anchor_right = 0.7
+	_boss_panel.offset_top = 96.0
+	var boss_col := VBoxContainer.new()
+	boss_col.add_theme_constant_override("separation", 4)
+	_boss_panel.add_child(boss_col)
+	_boss_title = UIStyle.label(Boss.NAME, 13, UIStyle.RED, UIStyle.DISPLAY)
+	_boss_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_col.add_child(_boss_title)
+	_boss_bar = BossBar.new()
+	boss_col.add_child(_boss_bar)
+	_boss_panel.visible = false
+
 	_hint = UIStyle.label("ESC  pausar / info", 11, Color(UIStyle.TEXT_DIM, 0.6), UIStyle.CAPTION)
 	_root.add_child(_hint)
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 16)
@@ -109,6 +131,25 @@ func popup(text: String, color: Color, screen_pos: Vector2, font_size: int = 18)
 	tw.chain().tween_callback(l.queue_free)
 
 
+func show_boss_bar() -> void:
+	_boss_bar.ratio = 1.0
+	_boss_panel.visible = true
+	_boss_panel.modulate.a = 0.0
+	_boss_panel.create_tween().tween_property(_boss_panel, "modulate:a", 1.0, 0.5)
+
+
+func hide_boss_bar() -> void:
+	_boss_panel.visible = false
+
+
+## Nome do chefe e a vida que falta dele (0..1).
+func set_boss_status(text: String, ratio: float) -> void:
+	_boss_title.text = UIStyle.plain(text)
+	if ratio < _boss_bar.ratio - 0.0001:
+		_boss_bar.hit()
+	_boss_bar.ratio = ratio
+
+
 ## Borda vermelha na tela ao levar dano (0..1).
 func damage_flash(strength: float) -> void:
 	if _vignette_tween != null and _vignette_tween.is_valid():
@@ -120,12 +161,26 @@ func damage_flash(strength: float) -> void:
 
 ## stats: score, best, new_record, time, max_cells, collected, destroyed
 func show_game_over(stats: Dictionary) -> void:
+	_show_end_screen("GAME OVER", "NÚCLEO DESTRUÍDO", UIStyle.RED, "game_over", stats)
+
+
+## Chefe derrotado.
+func show_victory(stats: Dictionary) -> void:
+	_show_end_screen("VITÓRIA", Boss.NAME + " DERROTADO", UIStyle.GOLD, "victory", stats,
+		"Você chegou à bandeira e destruiu o núcleo do " + Boss.NAME.capitalize() + "!")
+
+
+## Painel de fim de jogo: legenda, titulo, recorde, estatisticas e botoes.
+## `kind` escolhe os slots de skin (panel_<kind>, backdrop_<kind>).
+func _show_end_screen(caption: String, heading: String, accent: Color, kind: String, stats: Dictionary,
+		message: String = "") -> void:
 	set_playing(false)
 	_hint.visible = false
+	_boss_panel.visible = false
 	race_bar.get_parent().visible = false
 	var dim := ColorRect.new()
 	dim.color = Color(0.0, 0.0, 0.02, 0.6)
-	var overlay := UISkin.replace("backdrop_game_over", dim, true)
+	var overlay := UISkin.replace("backdrop_" + kind, dim, true)
 	_root.add_child(overlay)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -134,7 +189,7 @@ func show_game_over(stats: Dictionary) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var panel := PanelContainer.new()
-	var style := UIStyle.frame(["panel_game_over", "panel"], UIStyle.RED, HexFrame.LARGE, 16.0)
+	var style := UIStyle.frame(["panel_" + kind, "panel"], accent, HexFrame.LARGE, 16.0)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
 
@@ -142,12 +197,16 @@ func show_game_over(stats: Dictionary) -> void:
 	col.add_theme_constant_override("separation", 10)
 	panel.add_child(col)
 
-	var sub := UIStyle.label("GAME OVER", 11, UIStyle.TEXT_DIM, UIStyle.CAPTION)
+	var sub := UIStyle.label(caption, 11, UIStyle.TEXT_DIM, UIStyle.CAPTION)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(sub)
-	var title := UIStyle.label("NÚCLEO DESTRUÍDO", 24, UIStyle.RED, UIStyle.DISPLAY)
+	var title := UIStyle.label(heading, 24, accent, UIStyle.DISPLAY)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
+	if message != "":
+		var msg := UIStyle.label(message, 13)
+		msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(msg)
 
 	if stats.new_record:
 		var rec := UIStyle.label("NOVO RECORDE!", 13, UIStyle.GOLD, UIStyle.CAPTION)
@@ -177,7 +236,7 @@ func show_game_over(stats: Dictionary) -> void:
 		v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(v)
 
-	var restart := UIStyle.button("JOGAR NOVAMENTE   [R]")
+	var restart := UIStyle.button("JOGAR NOVAMENTE")
 	restart.pressed.connect(restart_requested.emit)
 	var menu := UIStyle.button("MENU PRINCIPAL")
 	menu.pressed.connect(menu_requested.emit)
@@ -244,3 +303,30 @@ class Reticle extends UISprite:
 			var d := Vector2.from_angle(-_t * 0.8 + i * TAU / 3.0)
 			draw_line(m + d * (r + 4.0), m + d * (r + 9.0), Color(color, 0.6), 1.5, true)
 		draw_circle(m, 2.0, UIStyle.GOLD)
+
+
+## Barra de vida do nucleo do chefe: vermelha, com a parte perdida
+## recuando devagar e um brilho branco a cada dano.
+class BossBar extends Control:
+	var ratio := 1.0
+	var _shown := 1.0
+	var _flash := 0.0
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(0, 14)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func hit() -> void:
+		_flash = 1.0
+
+	func _process(delta: float) -> void:
+		_shown = move_toward(_shown, ratio, delta * 0.6)
+		_flash = maxf(_flash - delta * 4.0, 0.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(r, Color(0.0, 0.0, 0.0, 0.5))
+		draw_rect(Rect2(r.position, Vector2(r.size.x * _shown, r.size.y)), Color(1.0, 0.85, 0.8, 0.5))
+		draw_rect(Rect2(r.position, Vector2(r.size.x * ratio, r.size.y)), UIStyle.RED.lerp(Color.WHITE, _flash * 0.6))
+		draw_rect(r, Color(UIStyle.RED, 0.8), false, 1.5)

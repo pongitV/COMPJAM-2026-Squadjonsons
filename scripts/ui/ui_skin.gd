@@ -25,10 +25,14 @@ const SLOTS := {
 	"card_cannons": "Card de canhoes (HUD).",
 	"card_record": "Card de recorde (menu principal).",
 	"card_race": "Moldura da linha de chegada no rodape.",
+	"card_boss": "Moldura da barra de vida do chefe (no alto da tela).",
 	"panel": "Moldura padrao dos paineis grandes (usada se o painel nao tiver a sua).",
 	"panel_pause": "Painel do menu de pausa.",
 	"panel_manual": "Painel do manual.",
 	"panel_game_over": "Painel de game over.",
+	"panel_victory": "Painel de vitoria (chefe derrotado).",
+	"panel_tutorial": "Caixa de texto do tutorial.",
+	"panel_formations": "Janela das formacoes dos canhoes (tutorial).",
 	"key": "Chip de tecla do manual.",
 	"separator": "Linha separadora horizontal (so estica na largura).",
 	# Botoes (9-slice)
@@ -56,6 +60,7 @@ const SLOTS := {
 	"backdrop_menu": "Fundo atras do manual no menu principal.",
 	"backdrop_pause": "Fundo atras do menu de pausa.",
 	"backdrop_game_over": "Fundo atras do painel de game over.",
+	"backdrop_victory": "Fundo atras do painel de vitoria.",
 }
 
 static var _cache := {}

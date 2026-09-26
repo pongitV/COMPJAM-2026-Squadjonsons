@@ -67,6 +67,16 @@ func direction() -> Vector2:
 	return Vector2.from_angle(travel_angle)
 
 
+## Pedacos de minerio soltos derivam devagar para tras (a esquerda), como se a
+## nave passasse por eles. Nao batem em nada.
+@export_range(0.0, 300.0, 1.0, "suffix:px/s") var ore_drift := 25.0
+
+
+## Velocidade de deriva dos pedacos de minerio soltos.
+func ore_drift_velocity() -> Vector2:
+	return -direction() * ore_drift
+
+
 ## Velocidade de arrasto somada aos asteroides.
 func drift() -> Vector2:
 	return -direction() * asteroid_drift

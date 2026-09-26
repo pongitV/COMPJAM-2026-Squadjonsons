@@ -29,13 +29,14 @@ const MISSILE_EXTRA_LIFE := 1.0
 @export_range(50.0, 3000.0, 10.0, "suffix:px/s") var common_speed := 650.0
 
 @export_group("Shotgun")
+## Mesmo alcance do canhao comum (common_range). Cada disparo: um tiro no
+## centro e shotgun_pellets_per_side de cada lado, abrindo em leque.
 @export_range(0.02, 10.0, 0.01, "suffix:s") var shotgun_cooldown := 0.7
-## Projeteis por disparo (em leque).
-@export_range(1, 30, 1) var shotgun_pellets := 6
+## Tiros de cada lado do tiro central (2 = 5 tiros por disparo).
+@export_range(0, 10, 1) var shotgun_pellets_per_side := 2
 ## Dano de cada projetil.
 @export_range(0.0, 100.0, 0.1) var shotgun_damage := 1.0
-@export_range(50.0, 2000.0, 10.0, "suffix:px") var shotgun_range := 210.0
-## Abertura total do leque.
+## Abertura total do leque (entre os dois tiros das pontas).
 @export_range(0.0, 180.0, 1.0, "radians_as_degrees") var shotgun_spread := 0.75
 @export_range(50.0, 3000.0, 10.0, "suffix:px/s") var shotgun_speed := 560.0
 
@@ -57,6 +58,22 @@ const MISSILE_EXTRA_LIFE := 1.0
 @export_range(50.0, 2000.0, 10.0, "suffix:px") var bomb_range := 520.0
 @export_range(20.0, 2000.0, 10.0, "suffix:px/s") var bomb_speed := 200.0
 
+## Projeteis por disparo da shotgun (o do centro mais os dos lados).
+func shotgun_pellets() -> int:
+	return 1 + 2 * shotgun_pellets_per_side
+
+
+## Direcoes dos tiros da shotgun em torno de `dir`: um no centro e os dos
+## lados espalhados por igual ate a metade de shotgun_spread para cada lado.
+func shotgun_dirs(dir: Vector2) -> Array[Vector2]:
+	var dirs: Array[Vector2] = [dir]
+	for i in range(1, shotgun_pellets_per_side + 1):
+		var angle := shotgun_spread * 0.5 * i / shotgun_pellets_per_side
+		dirs.append(dir.rotated(angle))
+		dirs.append(dir.rotated(-angle))
+	return dirs
+
+
 ## Segundos ate o canhao da nave poder atirar de novo.
 func cooldown(weapon: int) -> float:
 	return base_cooldown(weapon) / fire_rate_multiplier
@@ -77,7 +94,7 @@ func base_cooldown(weapon: int) -> float:
 func range_of(weapon: int) -> float:
 	return {
 		Weapons.COMMON: common_range,
-		Weapons.SHOTGUN: shotgun_range,
+		Weapons.SHOTGUN: common_range,
 		Weapons.LASER: laser_range,
 		Weapons.BOMB: bomb_range,
 	}[weapon]
