@@ -12,8 +12,13 @@ const ACCEL := 1100.0
 const MAX_SPEED := 320.0
 ## Fracao da velocidade mantida apos 1 segundo (atrito).
 const DAMPING := 0.25
-## Velocidade de giro (rad/s) de uma nave pequena, segurando "rotate".
+## Giro (segurando "rotate") com inercia: velocidade maxima (rad/s) de uma
+## nave pequena, aceleracao/frenagem (rad/s^2) e quao rapido a velocidade
+## desejada cai perto da mira (1/s; ela desacelera suave ao chegar). Com
+## TURN_RESPONSE * TURN_SPEED < TURN_ACCEL a nave nunca passa da mira.
 const TURN_SPEED := 3.5
+const TURN_ACCEL := 12.0
+const TURN_RESPONSE := 3.0
 
 ## Azul dos detalhes da arte do nucleo (seta de giro, explosao, titulo).
 const CORE_COLOR := Color("#3a7bff")
@@ -71,12 +76,16 @@ func step(delta: float) -> void:
 	position += velocity * delta
 
 	# Segurando "rotate", a nave gira em torno do nucleo ate a frente
-	# (eixo +X local) apontar para a mira.
+	# (eixo +X local) apontar para a mira: acelera, chega devagar e, ao soltar,
+	# freia suave em vez de parar seco.
 	turning = Input.is_action_pressed("rotate")
+	var target_spin := 0.0
 	if turning:
 		var diff := wrapf((aim - global_position).angle() - rotation, -PI, PI)
-		var max_step := TURN_SPEED * mass_factor * delta
-		rotation += clampf(diff, -max_step, max_step)
+		var top := TURN_SPEED * mass_factor
+		target_spin = clampf(diff * TURN_RESPONSE, -top, top)
+	angular_velocity = move_toward(angular_velocity, target_spin, TURN_ACCEL * mass_factor * delta)
+	rotation += angular_velocity * delta
 
 	for k in _cooldowns:
 		_cooldowns[k] = maxf(_cooldowns[k] - delta, 0.0)
