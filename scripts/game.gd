@@ -27,6 +27,9 @@ var camera: Camera2D
 var music: AudioStreamPlayer
 var cannon_sfx: AudioStreamPlayer
 var laser_sfx: AudioStreamPlayer
+var attach_sfx: AudioStreamPlayer
+var ship_destroy_sfx: AudioStreamPlayer
+var asteroid_destroy_sfx: AudioStreamPlayer
 var starfield: Starfield
 var speed_fx: SpeedFx
 var hud: Hud
@@ -62,7 +65,7 @@ func _ready() -> void:
 	
 	music = AudioStreamPlayer.new()
 	music.stream = preload("res://Audio/Music/battle.wav")
-	music.volume_db = -20.0
+	music.volume_db = -30.0
 	add_child(music)
 	music.play()
 	
@@ -72,9 +75,24 @@ func _ready() -> void:
 	add_child(cannon_sfx)
 	
 	laser_sfx = AudioStreamPlayer.new()
-	laser_sfx.stream = preload("res://Audio/SFX/laser_shot_final.wav")
+	laser_sfx.stream = preload("res://Audio/SFX/Laserzao.wav")
 	laser_sfx.volume_db = -20.0
 	add_child(laser_sfx)
+	
+	attach_sfx = AudioStreamPlayer.new()
+	attach_sfx.stream = preload("res://Audio/SFX/attach.wav")
+	attach_sfx.volume_db = -20.0
+	add_child(attach_sfx)
+	
+	asteroid_destroy_sfx = AudioStreamPlayer.new()
+	asteroid_destroy_sfx.stream = preload("res://Audio/SFX/asteroidExplosion.ogg")
+	asteroid_destroy_sfx.volume_db = -20.0
+	add_child(asteroid_destroy_sfx)
+
+	ship_destroy_sfx = AudioStreamPlayer.new()
+	ship_destroy_sfx.stream = preload("res://Audio/SFX/PlayerExplosion.ogg")
+	ship_destroy_sfx.volume_db = -20.0
+	add_child(ship_destroy_sfx)
 
 	var bg := CanvasLayer.new()
 	bg.layer = -1
@@ -323,6 +341,7 @@ func _collide_asteroids() -> void:
 ## Asteroide destruido pelos canhoes: pontos e minerio.
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
+	asteroid_destroy_sfx.play()
 	if not game_over:
 		# A pontuacao conta por tras (game over e recorde), sem aparecer no HUD.
 		score += _cfg.score_for(a.max_hp)
@@ -561,11 +580,13 @@ func _update_ores(delta: float) -> void:
 func _on_ore_attached(ore: Ore, placement: Dictionary) -> void:
 	if not is_instance_valid(ore):
 		return
+	
 	var before := {}
 	for g in player.groups:
 		before[g.key] = true
 	if not player.attach_piece(placement):
 		return
+	attach_sfx.play()
 	collected += placement.size()
 	max_cells = maxi(max_cells, player.cells.size())
 	var center := Vector2.ZERO
@@ -701,6 +722,7 @@ func _on_core_destroyed() -> void:
 	pause_menu.enabled = false
 	tractor.drop()
 	tractor.queue_redraw()
+	ship_destroy_sfx.play()
 	fx.burst(player.global_position, Player.CORE_COLOR, 60, 260.0)
 	_shake = 25.0
 	hud.damage_flash(1.0)

@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="EnemyConfig" format=3 uid="uid://bhtxk8yd04mbm"]
+[gd_resource type="Resource" script_class="EnemyConfig" format=3 uid="uid://dfllicfj4ohbe"]
 
 [ext_resource type="Script" uid="uid://5pwcnwgrkf4v" path="res://scripts/enemy_config.gd" id="1_config"]
 
 [resource]
+resource_local_to_scene = true
 script = ExtResource("1_config")
 armed_chance_start = 0.1
 max_cannons_start = 7
