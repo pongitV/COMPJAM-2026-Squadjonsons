@@ -23,6 +23,7 @@ var lasers: Lasers
 var tractor: Tractor
 var fx: Fx
 var camera: Camera2D
+var music: AudioStreamPlayer
 var starfield: Starfield
 var hud: Hud
 var pause_menu: PauseMenu
@@ -47,6 +48,12 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	InputActions.ensure_defaults()
 	best_score = SaveData.best_score()
+	
+	music = AudioStreamPlayer.new()
+	music.stream = preload("res://Audio/Music/battle.wav")
+	music.volume_db = -20.0
+	add_child(music)
+	music.play()
 
 	var bg := CanvasLayer.new()
 	bg.layer = -1

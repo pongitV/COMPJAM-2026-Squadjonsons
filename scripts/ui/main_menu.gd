@@ -23,10 +23,18 @@ var _play_button: Button
 var _manual_back: Button
 var _fade: ColorRect
 var _leaving := false
+var _music: AudioStreamPlayer
 
 
 func _ready() -> void:
 	InputActions.ensure_defaults()
+	
+	_music = AudioStreamPlayer.new()
+	_music.stream = preload("res://Audio/Music/menu.wav")
+	_music.volume_db = -10.0
+	add_child(_music)
+	_music.play()
+	
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	# As artes aparecem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
