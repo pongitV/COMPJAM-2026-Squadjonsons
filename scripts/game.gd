@@ -10,28 +10,33 @@ const MAX_ASTEROIDS := 45
 const ORE_PER_CELL := 1.0
 ## Se true, asteroides que batem no jogador também soltam minério.
 const DROP_ORE_ON_COLLISION := false
+const SAVE_PATH := "user://save.cfg"
 
 var player: Player
 var bullets: Bullets
 var fx: Fx
 var camera: Camera2D
 var starfield: Starfield
+var hud: Hud
+var pause_menu: PauseMenu
 var asteroids: Array[Asteroid] = []
 var ores: Array[Ore] = []
 
 var elapsed := 0.0
 var score := 0
 var game_over := false
+## Estatísticas para a tela de game over.
+var collected := 0
+var destroyed := 0
+var max_cells := 1
+var best_score := 0
 var _spawn_timer := 1.0
 var _shake := 0.0
-
-var _hud_label: Label
-var _center_label: Label
 
 
 func _ready() -> void:
 	randomize()
-	Input.set_default_cursor_shape(Input.CURSOR_CROSS)
+	best_score = _load_best()
 
 	var bg := CanvasLayer.new()
 	bg.layer = -1
@@ -56,7 +61,17 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 
-	_build_hud()
+	hud = Hud.new()
+	hud.restart_requested.connect(_restart)
+	hud.quit_requested.connect(get_tree().quit)
+	add_child(hud)
+
+	pause_menu = PauseMenu.new()
+	pause_menu.opened.connect(hud.set_playing.bind(false))
+	pause_menu.resumed.connect(hud.set_playing.bind(true))
+	pause_menu.quit_requested.connect(get_tree().quit)
+	add_child(pause_menu)
+	_update_hud()
 
 
 func _physics_process(delta: float) -> void:
@@ -87,7 +102,12 @@ func _physics_process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if game_over and event.is_action_pressed("restart"):
-		get_tree().reload_current_scene()
+		_restart()
+
+
+func _restart() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 
 # --- Asteroides -------------------------------------------------------------
@@ -128,8 +148,11 @@ func _destroy_asteroid(a: Asteroid, drop_ore: bool) -> void:
 	asteroids.erase(a)
 	for h in a.cells:
 		fx.burst(a.cell_global(h), a.base_color.lightened(0.2), 3, 110.0)
-	if drop_ore:
+	if drop_ore and not game_over:
 		score += a.max_hp
+		destroyed += 1
+		hud.popup("+%s" % UIStyle.fmt_int(a.max_hp), UIStyle.GOLD, _to_screen(a.global_position),
+			clampi(14 + (a.size >> 1), 14, 24))
 		var keys := a.cells.keys()
 		var count := maxi(1, roundi(a.size * ORE_PER_CELL))
 		for i in count:
@@ -154,6 +177,9 @@ func _check_player_collisions() -> void:
 		var lost := player.take_damage(a.size)
 		for p in lost:
 			fx.burst(p, Player.CELL_COLOR, 5, 160.0)
+		hud.popup("-%d" % lost.size(), UIStyle.RED,
+			_to_screen(player.global_position + Vector2(0, -player.bound_radius - 8.0)), 22)
+		hud.damage_flash(a.size / 10.0)
 		_shake = minf(6.0 + a.size, 22.0)
 		_destroy_asteroid(a, DROP_ORE_ON_COLLISION)
 		if not player.alive:
@@ -169,7 +195,10 @@ func _update_ores(delta: float) -> void:
 			_remove_ore(ore)
 		elif not game_over and player.touches(ore):
 			player.absorb_at(ore.global_position)
+			collected += 1
+			max_cells = maxi(max_cells, player.cells.size())
 			fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
+			hud.popup("+1", UIStyle.GREEN, _to_screen(ore.global_position), 13)
 			_remove_ore(ore)
 
 
@@ -206,43 +235,44 @@ func _update_camera(delta: float) -> void:
 	starfield.queue_redraw()
 
 
-func _build_hud() -> void:
-	var layer := CanvasLayer.new()
-	add_child(layer)
-
-	_hud_label = Label.new()
-	_hud_label.position = Vector2(16, 12)
-	_hud_label.add_theme_font_size_override("font_size", 20)
-	layer.add_child(_hud_label)
-
-	var help := Label.new()
-	help.text = "WASD / setas: mover    Clique esquerdo: atirar"
-	help.add_theme_font_size_override("font_size", 14)
-	help.modulate = Color(1, 1, 1, 0.5)
-	layer.add_child(help)
-	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 16)
-
-	_center_label = Label.new()
-	_center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_center_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_center_label.add_theme_font_size_override("font_size", 36)
-	_center_label.visible = false
-	layer.add_child(_center_label)
-	_center_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+func _to_screen(world_pos: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform() * world_pos
 
 
 func _update_hud() -> void:
-	_hud_label.text = "Células: %d    Pontos: %d    Tempo: %s" % [
-		player.cells.size(), score, _format_time(elapsed)]
-
-
-func _format_time(t: float) -> String:
-	return "%d:%02d" % [int(t / 60.0), int(t) % 60]
+	hud.score_card.set_value(score)
+	hud.score_card.set_sub("RECORDE %s" % UIStyle.fmt_int(maxi(best_score, score)))
+	hud.cells_card.set_value(player.cells.size())
+	hud.cells_card.set_sub("COLETADOS %s" % UIStyle.fmt_int(collected))
+	hud.time_card.set_text(UIStyle.fmt_time(elapsed))
 
 
 func _on_core_destroyed() -> void:
 	game_over = true
+	pause_menu.enabled = false
 	fx.burst(player.global_position, Player.CORE_COLOR, 60, 260.0)
 	_shake = 25.0
-	_center_label.text = "GAME OVER\n\nPontos: %d    Tempo: %s\n\n[R] reiniciar" % [score, _format_time(elapsed)]
-	_center_label.visible = true
+	hud.damage_flash(1.0)
+	var new_record := score > best_score
+	if new_record:
+		best_score = score
+		_save_best(best_score)
+	hud.show_game_over({
+		"score": score, "best": best_score, "new_record": new_record,
+		"time": elapsed, "max_cells": max_cells,
+		"collected": collected, "destroyed": destroyed,
+	})
+
+
+func _load_best() -> int:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return 0
+	return int(cfg.get_value("stats", "best_score", 0))
+
+
+func _save_best(value: int) -> void:
+	var cfg := ConfigFile.new()
+	cfg.load(SAVE_PATH)
+	cfg.set_value("stats", "best_score", value)
+	cfg.save(SAVE_PATH)

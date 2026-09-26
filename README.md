@@ -10,6 +10,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 |---|---|
 | Mover | WASD / setas |
 | Atirar | Clique esquerdo (segurar) |
+| Pausar / info | ESC (ou P) |
 | Reiniciar (após game over) | R |
 
 ## Regras
@@ -26,6 +27,13 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | `scripts/asteroid.gd` | Geração aleatória e HP |
 | `scripts/ore.gd` | Minério (com leve magnetismo em direção ao jogador) |
 | `scripts/bullets.gd` | Todos os projéteis, em arrays compactos |
-| `scripts/game.gd` | Spawn, colisões, câmera, HUD e game over |
+| `scripts/game.gd` | Spawn, colisões, câmera, estatísticas e recorde |
+| `scripts/ui/ui_style.gd` | Paleta, fontes e estilos (cantos chanfrados) da interface |
+| `scripts/ui/hud.gd` | HUD: cards animados, textos flutuantes, vinheta de dano, mira e game over |
+| `scripts/ui/stat_card.gd`, `hex_icon.gd` | Card de status com contador animado e ícone hexagonal |
+| `scripts/ui/pause_menu.gd` | Menu de pausa (continuar, info, sair) |
 
 Os parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: `ORE_PER_CELL` e `DROP_ORE_ON_COLLISION` em `game.gd`, `FIRE_INTERVAL` em `player.gd`, `SIZE` em `hex.gd`).
+
+## Créditos
+- Fontes [Orbitron](https://fonts.google.com/specimen/Orbitron) (Matt McInerney) e [Rajdhani](https://fonts.google.com/specimen/Rajdhani) (Indian Type Foundry), sob a SIL Open Font License. Licenças em `fonts/`.
