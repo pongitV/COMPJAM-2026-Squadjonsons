@@ -4,3 +4,16 @@
 
 [resource]
 script = ExtResource("1_config")
+common_damage = 1.2
+common_range = 700.0
+common_speed = 750.0
+shotgun_cooldown = 0.5
+shotgun_pellets_per_side = 3
+shotgun_damage = 1.5
+shotgun_speed = 450.0
+laser_cooldown = 2.0
+laser_duration = 5.0
+laser_range = 1000.0
+bomb_cooldown = 1.5
+bomb_radius = 200.0
+bomb_speed = 150.0
