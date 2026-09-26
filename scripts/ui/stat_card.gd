@@ -1,6 +1,6 @@
 class_name StatCard
 extends PanelContainer
-## Card do HUD: ícone, legenda e um número que "rola" até o valor alvo,
+## Card do HUD: icone, legenda e um numero que "rola" ate o valor alvo,
 ## pulsando na cor do card ao subir e em vermelho ao cair.
 
 var icon: HexIcon
@@ -43,7 +43,7 @@ func set_value(v: int) -> void:
 	_bump(_color if gained else UIStyle.RED, gained)
 
 
-## Texto livre (sem animação de contagem), ex.: o cronômetro.
+## Texto livre (sem animacao de contagem), ex.: o cronometro.
 func set_text(text: String) -> void:
 	_value_label.text = UIStyle.plain(text)
 

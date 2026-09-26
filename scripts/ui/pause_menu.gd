@@ -2,7 +2,7 @@ class_name PauseMenu
 extends CanvasLayer
 ## Menu de pausa (ESC): continuar, info (controles e regras), voltar ao menu
 ## principal e sair.
-## Roda com a árvore pausada (PROCESS_MODE_ALWAYS).
+## Roda com a arvore pausada (PROCESS_MODE_ALWAYS).
 
 signal opened
 signal resumed
@@ -87,7 +87,7 @@ func resume() -> void:
 func _show_main() -> void:
 	_info_panel.visible = false
 	_main_panel.visible = true
-	# O manual pode ter reduzido o container que os dois painéis dividem.
+	# O manual pode ter reduzido o container que os dois paineis dividem.
 	(_main_panel.get_parent() as Control).scale = Vector2.ONE
 	_pop_in(_main_panel)
 	_resume_button.grab_focus()
@@ -110,7 +110,7 @@ func _pop_in(panel: Control) -> void:
 func _build_main() -> Control:
 	var parts := Manual.make_panel(UIStyle.CYAN)
 	var col: VBoxContainer = parts[1]
-	Manual.title(col, "HEX ASTEROIDS", "PAUSADO", UIStyle.CYAN)
+	Manual.title(col, "HEXCORE", "PAUSADO", UIStyle.CYAN)
 
 	_resume_button = UIStyle.button("CONTINUAR")
 	_resume_button.pressed.connect(resume)

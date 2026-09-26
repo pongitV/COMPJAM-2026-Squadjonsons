@@ -1,6 +1,6 @@
 class_name Fx
 extends Node2D
-## Partículas simples de explosão / detritos.
+## Particulas simples de explosao / detritos.
 
 const MAX_PARTICLES := 3000
 const RING_TIME := 0.45
@@ -13,7 +13,7 @@ var _vel := PackedVector2Array()
 var _life := PackedFloat32Array()
 var _max_life := PackedFloat32Array()
 var _color := PackedColorArray()
-## Todas as partículas vão numa só chamada de desenho.
+## Todas as particulas vao numa so chamada de desenho.
 var _batch := TriBatch.new()
 
 
@@ -29,7 +29,7 @@ func burst(at: Vector2, color: Color, count: int, speed: float) -> void:
 		_color.append(color)
 
 
-## Anel de choque que se expande até `radius` (explosões).
+## Anel de choque que se expande ate `radius` (explosoes).
 func ring(at: Vector2, radius: float, color: Color) -> void:
 	_rings.append({"pos": at, "radius": radius, "color": color, "t": 0.0})
 

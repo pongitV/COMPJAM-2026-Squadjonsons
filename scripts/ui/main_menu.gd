@@ -1,11 +1,11 @@
 class_name MainMenu
 extends Node2D
-## Tela inicial: asteroides e pedaços de minério flutuando, uma nave de
-## vitrine girando, título, recorde e botões (jogar, manual, sair).
+## Tela inicial do HexCore: asteroides e pedacos de minerio flutuando, uma
+## nave de vitrine girando, titulo, recorde e botoes (jogar, manual, sair).
 
 const SCENE := "res://main.tscn"
 const GAME_SCENE := "res://game.tscn"
-## Onde fica a nave de vitrine (mundo) e a câmera do fundo.
+## Onde fica a nave de vitrine (mundo) e a camera do fundo.
 const SHOWCASE_POS := Vector2(190.0, 10.0)
 const CAMERA_ZOOM := 1.6
 const DRIFTERS := 14
@@ -81,7 +81,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- Fundo ------------------------------------------------------------------
 
-## Asteroide ou pedaço de minério decorativo, flutuando devagar.
+## Asteroide ou pedaco de minerio decorativo, flutuando devagar.
 func _spawn_drifter(at: Vector2) -> void:
 	var rock := Asteroid.new()
 	rock.setup(randi_range(3, 9))
@@ -102,7 +102,7 @@ func _spawn_drifter(at: Vector2) -> void:
 	_drifters.append([body, Vector2.from_angle(randf() * TAU) * randf_range(8.0, 22.0), randf_range(-0.3, 0.3)])
 
 
-## Nave de exemplo: núcleo, casco e os quatro canhões.
+## Nave de exemplo: nucleo, casco e os quatro canhoes.
 func _build_showcase() -> void:
 	_showcase = Player.new()
 	_showcase.position = SHOWCASE_POS
@@ -173,31 +173,20 @@ func _build_main() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 
-	var title := UIStyle.label("HEX", 96, UIStyle.CYAN, UIStyle.DISPLAY)
-	var title2 := UIStyle.label("ASTEROIDS", 52, UIStyle.TEXT, UIStyle.DISPLAY)
-	for t in [title, title2]:
-		t.add_theme_color_override("font_shadow_color", Color(UIStyle.CYAN, 0.45))
-		t.add_theme_constant_override("shadow_offset_x", 0)
-		t.add_theme_constant_override("shadow_offset_y", 0)
-		t.add_theme_constant_override("shadow_outline_size", 14)
-	var titles := VBoxContainer.new()
-	titles.add_theme_constant_override("separation", -18)
-	titles.add_child(title)
-	titles.add_child(title2)
-	col.add_child(titles)
-
-	var tagline := HBoxContainer.new()
-	tagline.add_theme_constant_override("separation", 10)
-	for i in 3:
-		if i > 0:
-			var dot := HexIcon.new([UIStyle.GREEN, UIStyle.GOLD][i - 1], 12)
-			dot.spin_speed = 0.8
-			tagline.add_child(dot)
-		tagline.add_child(UIStyle.label(["colete", "encaixe", "sobreviva"][i], 16, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	col.add_child(tagline)
+	# Titulo "HexCore": "hex" em ciano e "core" no dourado do nucleo.
+	var title := HBoxContainer.new()
+	title.add_theme_constant_override("separation", 0)
+	for part in [["HEX", UIStyle.CYAN], ["CORE", Player.CORE_COLOR]]:
+		var l := UIStyle.label(part[0], 96, part[1], UIStyle.DISPLAY)
+		l.add_theme_color_override("font_shadow_color", Color(part[1], 0.45))
+		l.add_theme_constant_override("shadow_offset_x", 0)
+		l.add_theme_constant_override("shadow_offset_y", 0)
+		l.add_theme_constant_override("shadow_outline_size", 14)
+		title.add_child(l)
+	col.add_child(title)
 
 	var spacer := Control.new()
-	spacer.custom_minimum_size.y = 14
+	spacer.custom_minimum_size.y = 24
 	col.add_child(spacer)
 
 	var record := StatCard.new("RECORDE", UIStyle.GOLD)

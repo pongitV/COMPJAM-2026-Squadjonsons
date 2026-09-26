@@ -1,7 +1,7 @@
 class_name CannonCard
 extends PanelContainer
-## Card do HUD com a quantidade de cada canhão e o progresso até o
-## próximo canhão comum (um hexágono aceso por asteroide destruído).
+## Card do HUD com a quantidade de cada canhao e o progresso ate o
+## proximo canhao comum (um hexagono aceso por asteroide destruido).
 
 const TYPES := [Weapons.COMMON, Weapons.SHOTGUN, Weapons.LASER, Weapons.BOMB]
 
@@ -63,7 +63,7 @@ func set_progress(filled: int) -> void:
 	_pips.set_filled(filled)
 
 
-## Fileira de hexágonos que acendem conforme o progresso.
+## Fileira de hexagonos que acendem conforme o progresso.
 class HexPips extends Control:
 	var _total := 5
 	var _filled := 0

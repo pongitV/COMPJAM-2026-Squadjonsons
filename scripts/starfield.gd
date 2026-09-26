@@ -1,14 +1,14 @@
 class_name Starfield
 extends Node2D
-## Fundo de estrelas com parallax, desenhado em espaço de tela.
+## Fundo de estrelas com parallax, desenhado em espaco de tela.
 
 const TILE := 1024.0
 const COUNT := 220
 
 var cam_pos := Vector2.ZERO
-## [posição no tile, fator de parallax, tamanho, alpha]
+## [posicao no tile, fator de parallax, tamanho, alpha]
 var _stars := []
-## Todas as estrelas vão numa só chamada de desenho.
+## Todas as estrelas vao numa so chamada de desenho.
 var _batch := TriBatch.new()
 
 

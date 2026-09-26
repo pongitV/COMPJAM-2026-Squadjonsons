@@ -1,7 +1,7 @@
 class_name Missiles
 extends Node2D
-## Mísseis do canhão bomba: voam devagar até o ponto mirado e explodem lá
-## (ou antes, ao tocar um asteroide), causando dano em área.
+## Misseis do canhao bomba: voam devagar ate o ponto mirado e explodem la
+## (ou antes, ao tocar um asteroide), causando dano em area.
 
 const HIT_DIST := Hex.SIZE * 0.87 + 4.0
 
@@ -21,7 +21,7 @@ func launch(origin: Vector2, target: Vector2, inherited_velocity: Vector2) -> vo
 	})
 
 
-## Move os mísseis e aplica as explosões. Retorna onde houve explosão.
+## Move os misseis e aplica as explosoes. Retorna onde houve explosao.
 func step(delta: float, asteroids: Array[Asteroid], fx: Fx) -> PackedVector2Array:
 	var blasts := PackedVector2Array()
 	var color := Weapons.color(Weapons.BOMB)

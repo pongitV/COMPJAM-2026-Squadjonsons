@@ -1,7 +1,7 @@
 class_name Manual
 extends RefCounted
-## Peças de interface compartilhadas pelo menu principal e pelo de pausa:
-## painel chanfrado, título com ícone e o manual (controles, regras, canhões).
+## Pecas de interface compartilhadas pelo menu principal e pelo de pausa:
+## painel chanfrado, titulo com icone e o manual (controles, regras, canhoes).
 
 
 ## Painel com uma coluna dentro. Retorna [painel, coluna].
@@ -30,7 +30,7 @@ static func title(col: VBoxContainer, caption: String, text: String, color: Colo
 	col.add_child(HSeparator.new())
 
 
-## Reduz o painel se ele não couber na altura da tela. A escala vai no
+## Reduz o painel se ele nao couber na altura da tela. A escala vai no
 ## CenterContainer que o envolve (containers zeram a escala dos filhos a
 ## cada layout), a partir do centro dele.
 static func fit(panel: Control) -> void:
@@ -40,8 +40,8 @@ static func fit(panel: Control) -> void:
 	holder.scale = Vector2.ONE * minf(1.0, available / panel.get_combined_minimum_size().y)
 
 
-## O manual, em três abas (controles, como jogar, canhões) para caber na
-## tela. Retorna [painel, botão VOLTAR] (quem usa conecta o botão).
+## O manual, em tres abas (controles, como jogar, canhoes) para caber na
+## tela. Retorna [painel, botao VOLTAR] (quem usa conecta o botao).
 static func build() -> Array:
 	var parts := make_panel(UIStyle.GREEN)
 	var col: VBoxContainer = parts[1]
@@ -51,7 +51,7 @@ static func build() -> Array:
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.add_theme_constant_override("separation", 8)
 	col.add_child(tabs)
-	# Altura fixa: o painel não muda de tamanho ao trocar de aba.
+	# Altura fixa: o painel nao muda de tamanho ao trocar de aba.
 	var pages := MarginContainer.new()
 	pages.custom_minimum_size = Vector2(740, 250)
 	pages.add_theme_constant_override("margin_top", 8)
@@ -129,7 +129,7 @@ static func _cannons() -> Control:
 	return list
 
 
-## Linha do manual: flor da célula + nome opcional + frase curta.
+## Linha do manual: flor da celula + nome opcional + frase curta.
 static func _line(parent: VBoxContainer, art: int, text: String, heading: String = "", color: Color = UIStyle.TEXT) -> void:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 12)

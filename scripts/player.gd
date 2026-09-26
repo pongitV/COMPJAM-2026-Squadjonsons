@@ -1,14 +1,14 @@
 class_name Player
 extends HexBody
-## Nave do jogador: um aglomerado de células conectadas à célula core.
-## Cada célula guarda o tipo de canhão que carrega (Weapons.NONE = casco).
+## Nave do jogador: um aglomerado de celulas conectadas a celula core.
+## Cada celula guarda o tipo de canhao que carrega (Weapons.NONE = casco).
 
 signal core_destroyed
 
 const CORE := Vector2i.ZERO
 const ACCEL := 1100.0
 const MAX_SPEED := 320.0
-## Fração da velocidade mantida após 1 segundo (atrito).
+## Fracao da velocidade mantida apos 1 segundo (atrito).
 const DAMPING := 0.25
 ## Velocidade de giro (rad/s) de uma nave pequena, segurando "rotate".
 const TURN_SPEED := 3.5
@@ -16,25 +16,25 @@ const TURN_SPEED := 3.5
 const CORE_COLOR := Color(1.0, 0.85, 0.35)
 const HURT_COLOR := Color(1.0, 0.25, 0.2)
 
-## Alvos são recalculados a esta frequência (não precisa ser todo frame).
+## Alvos sao recalculados a esta frequencia (nao precisa ser todo frame).
 const RETARGET_INTERVAL := 0.1
 
 var alive := true
-## Posição do mouse; a nave gira em direção a ela segurando "rotate".
+## Posicao do mouse; a nave gira em direcao a ela segurando "rotate".
 var aim := Vector2.RIGHT
-## Vector2i (célula com canhão) -> Asteroid mais próximo no alcance.
+## Vector2i (celula com canhao) -> Asteroid mais proximo no alcance.
 var _targets := {}
 var _retarget_timer := 0.0
-## Girando em direção à mira (tecla segurada).
+## Girando em direcao a mira (tecla segurada).
 var turning := false
-## Vector2i -> segundos até o canhão daquela célula poder atirar de novo.
+## Vector2i -> segundos ate o canhao daquela celula poder atirar de novo.
 var _cooldowns := {}
-## Células com canhão e contagem por tipo, atualizadas só quando a nave muda
-## (tiro, desenho e HUD rodam todo frame e não precisam varrer o casco).
+## Celulas com canhao e contagem por tipo, atualizadas so quando a nave muda
+## (tiro, desenho e HUD rodam todo frame e nao precisam varrer o casco).
 var _cannon_cells: Array[Vector2i] = []
 var _counts := {}
 
-# Buffer reaproveitado a cada frame para desenhar os canhões.
+# Buffer reaproveitado a cada frame para desenhar os canhoes.
 var _cannon_sprites := TriBatch.new()
 
 
@@ -43,7 +43,7 @@ func _init() -> void:
 	recompute_bounds()
 
 
-## Toda mudança de células ou canhões termina aqui.
+## Toda mudanca de celulas ou canhoes termina aqui.
 func recompute_bounds() -> void:
 	super.recompute_bounds()
 	_cannon_cells.clear()
@@ -64,7 +64,7 @@ func step(delta: float) -> void:
 	velocity = velocity.limit_length(MAX_SPEED)
 	position += velocity * delta
 
-	# Segurando "rotate", a nave gira em torno do núcleo até a frente
+	# Segurando "rotate", a nave gira em torno do nucleo ate a frente
 	# (eixo +X local) apontar para a mira.
 	turning = Input.is_action_pressed("rotate")
 	if turning:
@@ -77,7 +77,7 @@ func step(delta: float) -> void:
 	if flash > 0.0:
 		flash = maxf(flash - delta * 3.0, 0.0)
 		refresh_colors()
-	# Os canos acompanham a mira, então redesenha todo frame.
+	# Os canos acompanham a mira, entao redesenha todo frame.
 	queue_redraw()
 
 
@@ -85,7 +85,7 @@ func weapon_at(h: Vector2i) -> int:
 	return cells.get(h, Weapons.NONE)
 
 
-## Célula da camada mais externa (tem ao menos um vizinho vazio).
+## Celula da camada mais externa (tem ao menos um vizinho vazio).
 func is_outer(h: Vector2i) -> bool:
 	for d in Hex.DIRS:
 		if not cells.has(h + d):
@@ -93,13 +93,13 @@ func is_outer(h: Vector2i) -> bool:
 	return false
 
 
-## Canhão comum só funciona na camada mais externa.
+## Canhao comum so funciona na camada mais externa.
 func is_armed(h: Vector2i) -> bool:
 	var w := weapon_at(h)
 	return w != Weapons.NONE and (w != Weapons.COMMON or is_outer(h))
 
 
-## Direção global do cano: o laser aponta para fora da nave (gira junto
+## Direcao global do cano: o laser aponta para fora da nave (gira junto
 ## com ela); os demais apontam para o alvo, ou para fora quando sem alvo.
 func barrel_dir(h: Vector2i) -> Vector2:
 	var d := cell_local(h).rotated(rotation)
@@ -111,12 +111,12 @@ func barrel_dir(h: Vector2i) -> Vector2:
 	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT.rotated(rotation)
 
 
-## Ponta do cano do canhão da célula (de onde saem tiros e o laser).
+## Ponta do cano do canhao da celula (de onde saem tiros e o laser).
 func muzzle(h: Vector2i) -> Vector2:
 	return cell_global(h) + barrel_dir(h) * Art.muzzle_length(weapon_at(h))
 
 
-## Alvo atual do canhão daquela célula (null se não houver).
+## Alvo atual do canhao daquela celula (null se nao houver).
 func target_of(h: Vector2i) -> Asteroid:
 	var a = _targets.get(h)
 	if a == null or not is_instance_valid(a) or a.hp <= 0:
@@ -124,8 +124,8 @@ func target_of(h: Vector2i) -> Asteroid:
 	return a
 
 
-## Cada canhão escolhe o asteroide mais próximo DELE dentro do alcance.
-## O laser só "tem alvo" quando algum asteroide cruza a linha do raio.
+## Cada canhao escolhe o asteroide mais proximo DELE dentro do alcance.
+## O laser so "tem alvo" quando algum asteroide cruza a linha do raio.
 func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 	_retarget_timer -= delta
 	if _retarget_timer > 0.0:
@@ -158,7 +158,7 @@ func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 			_targets[h] = best
 
 
-## Dispara os canhões prontos que têm alvo.
+## Dispara os canhoes prontos que tem alvo.
 ## Retorna uma lista de {type, cell, origin, dir, target_pos}.
 func fire() -> Array:
 	if not alive:
@@ -180,17 +180,17 @@ func fire() -> Array:
 	return shots
 
 
-## Onde o alvo vai estar quando o projétil chegar (mira à frente). Usa a
-## velocidade relativa porque os projéteis herdam a velocidade da nave.
+## Onde o alvo vai estar quando o projetil chegar (mira a frente). Usa a
+## velocidade relativa porque os projeteis herdam a velocidade da nave.
 func _lead(origin: Vector2, target: Asteroid, speed: float) -> Vector2:
 	var t := origin.distance_to(target.global_position) / speed
 	return target.global_position + (target.velocity - velocity) * t
 
 
-## Onde um pedaço de minério encaixaria no grid da nave, girado `turns`
-## passos de 60° em relação a ela. Procura perto da posição atual do pedaço
-## um lugar em que todas as células caibam e ao menos uma encoste na nave.
-## Retorna {célula da nave: canhão}, ou {} se não houver encaixe a menos de
+## Onde um pedaco de minerio encaixaria no grid da nave, girado `turns`
+## passos de 60 graus em relacao a ela. Procura perto da posicao atual do pedaco
+## um lugar em que todas as celulas caibam e ao menos uma encoste na nave.
+## Retorna {celula da nave: canhao}, ou {} se nao houver encaixe a menos de
 ## `snap_dist`.
 func find_placement(piece: Ore, turns: int, snap_dist: float) -> Dictionary:
 	if not alive or piece.cells.is_empty():
@@ -224,7 +224,7 @@ func find_placement(piece: Ore, turns: int, snap_dist: float) -> Dictionary:
 	return best
 
 
-## Gruda um pedaço já posicionado ({célula: canhão}, de find_placement).
+## Gruda um pedaco ja posicionado ({celula: canhao}, de find_placement).
 func attach_piece(placement: Dictionary) -> bool:
 	if not alive or placement.is_empty():
 		return false
@@ -242,10 +242,10 @@ func attach_piece(placement: Dictionary) -> bool:
 	return true
 
 
-## Coloca um canhão comum numa célula de casco da borda, do lado da mira.
-## Sem casco livre na borda, a nave ganha uma célula nova com o canhão.
+## Coloca um canhao comum numa celula de casco da borda, do lado da mira.
+## Sem casco livre na borda, a nave ganha uma celula nova com o canhao.
 func add_common_cannon() -> Vector2i:
-	# Direção da mira no espaço local da nave (que pode estar girada).
+	# Direcao da mira no espaco local da nave (que pode estar girada).
 	var aim_dir := (aim - global_position).normalized().rotated(-rotation)
 	var best := CORE
 	var best_score := -INF
@@ -264,13 +264,13 @@ func add_common_cannon() -> Vector2i:
 	return best
 
 
-## Quantidade de canhões de cada tipo.
+## Quantidade de canhoes de cada tipo.
 func weapon_counts() -> Dictionary:
 	return _counts.duplicate()
 
 
-## Destrói uma célula atingida por um asteroide. Retorna true se era o
-## núcleo (fim de jogo). Chame settle_damage() depois da rodada de dano.
+## Destroi uma celula atingida por um asteroide. Retorna true se era o
+## nucleo (fim de jogo). Chame settle_damage() depois da rodada de dano.
 func destroy_cell(h: Vector2i) -> bool:
 	_remove_cell(h)
 	if h == CORE:
@@ -279,9 +279,9 @@ func destroy_cell(h: Vector2i) -> bool:
 	return false
 
 
-## Fecha uma rodada de dano: partes que perderam a ligação com o núcleo se
-## soltam inteiras (com seus canhões). Retorna [{célula: canhão}, ...] para
-## o jogo transformar em pedaços flutuantes.
+## Fecha uma rodada de dano: partes que perderam a ligacao com o nucleo se
+## soltam inteiras (com seus canhoes). Retorna [{celula: canhao}, ...] para
+## o jogo transformar em pedacos flutuantes.
 func settle_damage() -> Array:
 	var reached := {CORE: true}
 	var queue: Array[Vector2i] = [CORE]
@@ -307,7 +307,7 @@ func settle_damage() -> Array:
 	return detached
 
 
-## Núcleo destruído: a nave inteira explode. Retorna onde estavam as células.
+## Nucleo destruido: a nave inteira explode. Retorna onde estavam as celulas.
 func explode() -> PackedVector2Array:
 	var lost := PackedVector2Array()
 	for h in cells:
@@ -320,7 +320,7 @@ func explode() -> PackedVector2Array:
 	return lost
 
 
-## O espaço vazio `h` encosta em alguma célula da nave?
+## O espaco vazio `h` encosta em alguma celula da nave?
 func _touches_ship(h: Vector2i) -> bool:
 	for d in Hex.DIRS:
 		if cells.has(h + d):
@@ -328,7 +328,7 @@ func _touches_ship(h: Vector2i) -> bool:
 	return false
 
 
-## Espaço vazio adjacente à nave mais próximo de um ponto (espaço da grade).
+## Espaco vazio adjacente a nave mais proximo de um ponto (espaco da grade).
 func _nearest_free_slot(grid_p: Vector2) -> Vector2i:
 	var best := CORE
 	var best_dist := INF
@@ -344,8 +344,8 @@ func _nearest_free_slot(grid_p: Vector2) -> Vector2i:
 	return best
 
 
-## Canhões comuns que ficaram no meio da nave vão para o casco livre mais
-## próximo da borda. Sem casco livre na borda, ficam inativos até abrir espaço.
+## Canhoes comuns que ficaram no meio da nave vao para o casco livre mais
+## proximo da borda. Sem casco livre na borda, ficam inativos ate abrir espaco.
 func _relocate_commons() -> void:
 	for h in cells.keys():
 		if cells[h] != Weapons.COMMON or is_outer(h):
@@ -371,7 +371,7 @@ func _remove_cell(h: Vector2i) -> void:
 	_cooldowns.erase(h)
 
 
-## O núcleo usa a arte cinza com centro preto, tingida de dourado.
+## O nucleo usa a arte cinza com centro preto, tingida de dourado.
 func cell_color(h: Vector2i) -> Color:
 	var base := CORE_COLOR.lightened(0.3) if h == CORE else Color.WHITE
 	return base.lerp(HURT_COLOR, flash * 0.7)
@@ -398,9 +398,9 @@ func _draw_heading() -> void:
 	draw_dashed_line(Vector2(Hex.SIZE, 0), tip - Vector2(14, 0), Color(CORE_COLOR, 0.45), 2.0, 6.0)
 
 
-## Canhões: a arte de cada um, girada em torno da base (no centro da célula)
-## para o cano apontar para o alvo. Todos numa chamada só (atlas). Recarregando
-## o canhão fica mais escuro; comum preso no meio da nave fica bem apagado.
+## Canhoes: a arte de cada um, girada em torno da base (no centro da celula)
+## para o cano apontar para o alvo. Todos numa chamada so (atlas). Recarregando
+## o canhao fica mais escuro; comum preso no meio da nave fica bem apagado.
 func _draw_cannons() -> void:
 	_cannon_sprites.clear()
 	var s := Art.scale()
@@ -408,7 +408,7 @@ func _draw_cannons() -> void:
 		var w: int = cells[h]
 		var size := Art.cannon_size(w)
 		var pivot := Vector2(size.x * 0.5, Art.CANNON_PIVOT_Y * s)
-		# _draw usa o espaço local da nave, então desfaz a rotação da direção global.
+		# _draw usa o espaco local da nave, entao desfaz a rotacao da direcao global.
 		# Na arte o cano aponta para baixo (+Y).
 		var angle := barrel_dir(h).rotated(-rotation).angle() - PI / 2.0
 		var c := cell_local(h)

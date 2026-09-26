@@ -1,7 +1,7 @@
 class_name UIStyle
 extends RefCounted
 ## Paleta, fontes e estilos compartilhados por toda a interface.
-## Cantos chanfrados (corner_detail = 1) ecoam o formato dos hexágonos.
+## Cantos chanfrados (corner_detail = 1) ecoam o formato dos hexagonos.
 
 const CYAN := Color(0.3, 0.8, 1.0)
 const GOLD := Color(1.0, 0.85, 0.35)
@@ -14,9 +14,9 @@ const PANEL_BG := Color(0.02, 0.05, 0.1, 0.8)
 ## Tipos de fonte aceitos por label().
 enum { BODY, CAPTION, DISPLAY }
 
-## Hexagon é a fonte do jogo (CC BY-NC-SA 3.0, ver fonts/Hexagon-*.txt).
-## Ela só tem letras sem acento: os textos passam por plain() antes de
-## aparecer, e números/pontuação saem da Orbitron leve (SIL OFL), a reserva.
+## Hexagon e a fonte do jogo (CC BY-NC-SA 3.0, ver fonts/Hexagon-*.txt).
+## Ela so tem letras sem acento: os textos passam por plain() antes de
+## aparecer, e numeros/pontuacao saem da Orbitron leve (SIL OFL), a reserva.
 const HEXAGON := preload("res://fonts/Hexagon.otf")
 const ORBITRON := preload("res://fonts/Orbitron.ttf")
 const _ACCENTS := {
@@ -38,28 +38,28 @@ static var _caption_font: Font
 static var _theme: Theme
 
 
-## Texto corrido: regras, descrições, teclas.
+## Texto corrido: regras, descricoes, teclas.
 static func font() -> Font:
 	if _body_font == null:
 		_body_font = _hexagon(0.0, 0, 400)
 	return _body_font
 
 
-## Títulos, números do HUD, botões e textos flutuantes (traço mais grosso).
+## Titulos, numeros do HUD, botoes e textos flutuantes (traco mais grosso).
 static func display_font() -> Font:
 	if _display_font == null:
 		_display_font = _hexagon(0.9, 1, 700)
 	return _display_font
 
 
-## Legendas, com espaçamento largo.
+## Legendas, com espacamento largo.
 static func caption_font() -> Font:
 	if _caption_font == null:
 		_caption_font = _hexagon(0.4, 3, 500)
 	return _caption_font
 
 
-## Texto sem acentos (a Hexagon não tem letras acentuadas).
+## Texto sem acentos (a Hexagon nao tem letras acentuadas).
 static func plain(text: String) -> String:
 	var out := ""
 	for c in text:
@@ -139,7 +139,7 @@ static func key_chip(text: String) -> PanelContainer:
 const ARROWS := {"UP": -PI / 2, "DOWN": PI / 2, "LEFT": PI, "RIGHT": 0.0}
 
 
-## Triângulo apontando na direção de uma seta do teclado.
+## Triangulo apontando na direcao de uma seta do teclado.
 class ArrowGlyph extends Control:
 	var _angle := 0.0
 
@@ -161,7 +161,7 @@ static func button(text: String) -> Button:
 	b.text = plain(text)
 	b.custom_minimum_size = Vector2(240, 40)
 	b.focus_mode = Control.FOCUS_ALL
-	# Hover e foco de teclado ficam sempre no mesmo botão.
+	# Hover e foco de teclado ficam sempre no mesmo botao.
 	b.mouse_entered.connect(b.grab_focus)
 	return b
 
@@ -185,7 +185,7 @@ static func theme() -> Theme:
 	hover.shadow_size = 14
 	var pressed := hover.duplicate() as StyleBoxFlat
 	pressed.bg_color = Color(CYAN, 0.4)
-	# Foco (teclado) tem o mesmo visual do hover; é desenhado sobre o "normal".
+	# Foco (teclado) tem o mesmo visual do hover; e desenhado sobre o "normal".
 	var focus := hover.duplicate() as StyleBoxFlat
 	focus.bg_color = Color(CYAN, 0.15)
 

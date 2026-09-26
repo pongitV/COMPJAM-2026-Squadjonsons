@@ -1,16 +1,16 @@
 class_name Asteroid
 extends HexBody
-## Aglomerado aleatório de n células (n >= MIN_SIZE). É destruído após
-## ceil(n^(3/2)) disparos. Ao encostar na nave, cada célula dele destrói
-## CELL_CHARGES células da nave (as que tocar) e depois some; se o asteroide
-## se partir, os pedaços viram asteroides separados. Asteroides batem entre si.
+## Aglomerado aleatorio de n celulas (n >= MIN_SIZE). E destruido apos
+## ceil(n^(3/2)) disparos. Ao encostar na nave, cada celula dele destroi
+## CELL_CHARGES celulas da nave (as que tocar) e depois some; se o asteroide
+## se partir, os pedacos viram asteroides separados. Asteroides batem entre si.
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
-## Cor média da arte do asteroide (base do tingimento de dano e dos efeitos).
+## Cor media da arte do asteroide (base do tingimento de dano e dos efeitos).
 const ART_COLOR := Color("#756348")
-## Quantas células da nave cada célula do asteroide destrói antes de sumir.
+## Quantas celulas da nave cada celula do asteroide destroi antes de sumir.
 const CELL_CHARGES := 2
-## Menor asteroide possível; partes menores que isso se desfazem.
+## Menor asteroide possivel; partes menores que isso se desfazem.
 const MIN_SIZE := 3
 ## Elasticidade da batida entre asteroides (0 = gruda, 1 = quique perfeito).
 const BOUNCE := 0.6
@@ -20,7 +20,7 @@ var size := 1
 var max_hp := 1
 var hp := 1
 var base_color := Color.GRAY
-## Vector2i -> cargas restantes daquela célula contra a nave.
+## Vector2i -> cargas restantes daquela celula contra a nave.
 var charges := {}
 var _damage_accum := 0.0
 
@@ -28,7 +28,7 @@ var _damage_accum := 0.0
 func setup(n: int) -> void:
 	cells.clear()
 	cells[Vector2i.ZERO] = true
-	# Cresce a partir de uma célula, colando vizinhos aleatórios.
+	# Cresce a partir de uma celula, colando vizinhos aleatorios.
 	while cells.size() < n:
 		var keys := cells.keys()
 		var h: Vector2i = keys[randi() % keys.size()]
@@ -51,13 +51,13 @@ func step(delta: float) -> void:
 		_update_tint()
 
 
-## Recebe um disparo. Retorna true se foi destruído.
+## Recebe um disparo. Retorna true se foi destruido.
 func hit() -> bool:
 	apply_damage(1.0)
 	return hp <= 0
 
 
-## Dano em unidades de "disparo". Aceita frações (dano contínuo do laser).
+## Dano em unidades de "disparo". Aceita fracoes (dano continuo do laser).
 func apply_damage(amount: float) -> void:
 	_damage_accum += amount
 	var whole := int(_damage_accum)
@@ -69,16 +69,16 @@ func apply_damage(amount: float) -> void:
 	_update_tint()
 
 
-## Gasta uma carga da célula ao destruir uma célula da nave.
-## Retorna true quando a célula esgotou e deve sumir.
+## Gasta uma carga da celula ao destruir uma celula da nave.
+## Retorna true quando a celula esgotou e deve sumir.
 func spend_charge(h: Vector2i) -> bool:
 	charges[h] -= 1
 	return charges[h] <= 0
 
 
-## Remove células esgotadas. Partes que ficarem desconectadas viram novos
-## asteroides (retornados, para o jogo adicionar à cena). O HP acompanha o
-## tamanho, mantendo a proporção de dano já sofrido.
+## Remove celulas esgotadas. Partes que ficarem desconectadas viram novos
+## asteroides (retornados, para o jogo adicionar a cena). O HP acompanha o
+## tamanho, mantendo a proporcao de dano ja sofrido.
 func remove_cells(keys: Array) -> Array[Asteroid]:
 	for h in keys:
 		cells.erase(h)
@@ -122,14 +122,14 @@ func _resize(hp_ratio: float) -> void:
 	_update_tint()
 
 
-## Batida com outro asteroide: se alguma célula de um encosta numa do outro,
-## aplica um impulso no ponto de contato (massa = número de células) e afasta
-## os dois para não ficarem sobrepostos.
+## Batida com outro asteroide: se alguma celula de um encosta numa do outro,
+## aplica um impulso no ponto de contato (massa = numero de celulas) e afasta
+## os dois para nao ficarem sobrepostos.
 func collide_with(other: Asteroid) -> void:
 	var reach := bound_radius + other.bound_radius
 	if global_position.distance_squared_to(other.global_position) > reach * reach:
 		return
-	# Contato: média dos pontos e das normais entre células encostadas.
+	# Contato: media dos pontos e das normais entre celulas encostadas.
 	var small: Asteroid = self if cells.size() <= other.cells.size() else other
 	var big: Asteroid = other if small == self else self
 	var contact := Vector2.ZERO
@@ -171,13 +171,13 @@ func collide_with(other: Asteroid) -> void:
 		big.velocity -= normal * j * inv_big
 		small.angular_velocity = clampf(small.angular_velocity + rn_small * j * inv_i_small, -MAX_SPIN, MAX_SPIN)
 		big.angular_velocity = clampf(big.angular_velocity - rn_big * j * inv_i_big, -MAX_SPIN, MAX_SPIN)
-	# Separa proporcionalmente à massa (o mais leve anda mais).
+	# Separa proporcionalmente a massa (o mais leve anda mais).
 	var push := normal * depth * 0.8 / (inv_small + inv_big)
 	small.position += push * inv_small
 	big.position -= push * inv_big
 
 
-## Momento de inércia (células de massa 1 distribuídas em volta do centro).
+## Momento de inercia (celulas de massa 1 distribuidas em volta do centro).
 func _inertia() -> float:
 	var sum := 0.0
 	for h in cells:
@@ -185,8 +185,8 @@ func _inertia() -> float:
 	return sum
 
 
-## A cor de dano/flash é igual no asteroide inteiro, então vira um
-## self_modulate (grátis) em vez de recalcular a cor de cada vértice.
+## A cor de dano/flash e igual no asteroide inteiro, entao vira um
+## self_modulate (gratis) em vez de recalcular a cor de cada vertice.
 func _update_tint() -> void:
 	var damage := 1.0 - float(hp) / max_hp
 	var target := base_color.lerp(DAMAGED_COLOR, damage * 0.65).lerp(Color.WHITE, flash * 0.6)

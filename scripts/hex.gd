@@ -1,17 +1,17 @@
 class_name Hex
 extends RefCounted
-## Matemática de grade hexagonal (flat-top: lado plano em cima, como as
-## células da arte; coordenadas axiais q/r).
-## Referência: https://www.redblobgames.com/grids/hexagons/
+## Matematica de grade hexagonal (flat-top: lado plano em cima, como as
+## celulas da arte; coordenadas axiais q/r).
+## Referencia: https://www.redblobgames.com/grids/hexagons/
 
-## Raio (centro -> vértice) de uma célula, em pixels.
+## Raio (centro -> vertice) de uma celula, em pixels.
 const SIZE := 12.0
 const SQRT3 := 1.7320508075688772
 const DIRS := [
 	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
 	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
 ]
-## A própria célula + as 6 vizinhas.
+## A propria celula + as 6 vizinhas.
 const AROUND := [
 	Vector2i(0, 0),
 	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
@@ -36,7 +36,7 @@ static func distance(a: Vector2i, b: Vector2i) -> int:
 	return (absi(d.x) + absi(d.y) + absi(d.x + d.y)) >> 1
 
 
-## Gira uma coordenada axial em `turns` passos de 60° (sentido horário na
+## Gira uma coordenada axial em `turns` passos de 60 graus (sentido horario na
 ## tela), ou seja: to_pixel(rotate(h, 1)) == to_pixel(h).rotated(PI / 3).
 static func rotate(h: Vector2i, turns: int) -> Vector2i:
 	var q := h.x
@@ -48,7 +48,7 @@ static func rotate(h: Vector2i, turns: int) -> Vector2i:
 	return Vector2i(q, r)
 
 
-## Separa um conjunto de células em grupos conectados (listas de Vector2i).
+## Separa um conjunto de celulas em grupos conectados (listas de Vector2i).
 static func components(keys: Array) -> Array:
 	var left := {}
 	for h in keys:
@@ -70,7 +70,7 @@ static func components(keys: Array) -> Array:
 	return groups
 
 
-## Vértices de um hexágono centrado na origem, levemente encolhido (usado
+## Vertices de um hexagono centrado na origem, levemente encolhido (usado
 ## no encaixe fantasma do raio trator).
 static func corners() -> PackedVector2Array:
 	if _corners.is_empty():

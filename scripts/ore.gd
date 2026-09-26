@@ -1,11 +1,11 @@
 class_name Ore
 extends HexBody
-## Pedaço de minério: um grupo de células soltas, vindo de um asteroide
-## destruído ou de uma parte que se soltou da nave. Arrastado pelo raio
+## Pedaco de minerio: um grupo de celulas soltas, vindo de um asteroide
+## destruido ou de uma parte que se soltou da nave. Arrastado pelo raio
 ## trator e encaixado no grid da nave, vira parte dela.
-## cells: Vector2i -> tipo de canhão (Weapons.NONE = minério verde, vira casco).
+## cells: Vector2i -> tipo de canhao (Weapons.NONE = minerio verde, vira casco).
 
-## Cor da arte do minério verde (para feixe, efeitos e textos).
+## Cor da arte do minerio verde (para feixe, efeitos e textos).
 const COLOR := Color("#6ffc12")
 const LIFETIME := 25.0
 const SPECIAL_LIFETIME := 35.0
@@ -16,9 +16,9 @@ var life := LIFETIME
 var _pulse := randf() * TAU
 
 
-## Cria o pedaço a partir de células de outro objeto (asteroide ou nave),
-## no mesmo lugar e com a mesma rotação em que elas estavam.
-## weapons: Vector2i -> tipo de canhão (células ausentes são minério verde).
+## Cria o pedaco a partir de celulas de outro objeto (asteroide ou nave),
+## no mesmo lugar e com a mesma rotacao em que elas estavam.
+## weapons: Vector2i -> tipo de canhao (celulas ausentes sao minerio verde).
 func setup_from(source: HexBody, keys: Array, weapons: Dictionary = {}) -> void:
 	for h in keys:
 		cells[h] = weapons.get(h, Weapons.NONE)
@@ -36,7 +36,7 @@ func has_special() -> bool:
 	return false
 
 
-## Cor principal do pedaço (a do canhão, se tiver um).
+## Cor principal do pedaco (a do canhao, se tiver um).
 func main_color() -> Color:
 	for h in cells:
 		if cells[h] != Weapons.NONE:
@@ -46,14 +46,14 @@ func main_color() -> Color:
 
 func step(delta: float) -> void:
 	if dragged:
-		# Quem move e gira é o raio trator; e não expira enquanto está preso nele.
+		# Quem move e gira e o raio trator; e nao expira enquanto esta preso nele.
 		visible = true
 		return
 	rotation += angular_velocity * delta
 	velocity *= pow(0.5, delta)
 	position += velocity * delta
 	life -= delta
-	# Pisca nos últimos segundos antes de sumir.
+	# Pisca nos ultimos segundos antes de sumir.
 	visible = life > 5.0 or fmod(life, 0.3) > 0.12
 	if has_special():
 		_pulse += delta * 5.0
@@ -65,7 +65,7 @@ func cell_art(h: Vector2i) -> int:
 
 
 func _draw() -> void:
-	# Brilho pulsante atrás das células de canhão, para destacá-las.
+	# Brilho pulsante atras das celulas de canhao, para destaca-las.
 	for h in cells:
 		if cells[h] != Weapons.NONE:
 			var glow := Weapons.color(cells[h])

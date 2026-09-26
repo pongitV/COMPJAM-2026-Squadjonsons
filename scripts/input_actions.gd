@@ -1,6 +1,6 @@
 class_name InputActions
 extends RefCounted
-## Entradas das ações definidas por código (substituem as do project.godot).
+## Entradas das acoes definidas por codigo (substituem as do project.godot).
 ## Chamado ao abrir o menu e o jogo.
 
 

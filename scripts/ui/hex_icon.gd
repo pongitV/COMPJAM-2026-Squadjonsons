@@ -1,6 +1,6 @@
 class_name HexIcon
 extends Control
-## Ícone hexagonal animado: gira devagar e dá um "pulso" quando chutado.
+## Icone hexagonal animado: gira devagar e da um "pulso" quando chutado.
 
 var color := UIStyle.CYAN
 var spin_speed := 0.4

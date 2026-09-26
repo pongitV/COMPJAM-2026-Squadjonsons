@@ -1,27 +1,27 @@
 class_name Tractor
 extends Node2D
-## Raio trator: clique e arraste um pedaço de minério (dentro do alcance da
-## nave) e solte perto da nave para encaixá-lo no grid. O pedaço se alinha
-## ao grid da nave em passos de 60°; a roda do mouse gira o pedaço.
+## Raio trator: clique e arraste um pedaco de minerio (dentro do alcance da
+## nave) e solte perto da nave para encaixa-lo no grid. O pedaco se alinha
+## ao grid da nave em passos de 60 graus; a roda do mouse gira o pedaco.
 
-## placement: {célula da nave: canhão}, pronto para Player.attach_piece().
+## placement: {celula da nave: canhao}, pronto para Player.attach_piece().
 signal attached(ore: Ore, placement: Dictionary)
 
-## Alcance além da borda da nave.
+## Alcance alem da borda da nave.
 const RANGE := 200.0
-## Distância do mouse a uma célula do pedaço para conseguir pegá-lo.
+## Distancia do mouse a uma celula do pedaco para conseguir pega-lo.
 const PICK_RADIUS := Hex.SIZE * 1.6
-## Distância do pedaço ao encaixe para ele grudar ao soltar.
+## Distancia do pedaco ao encaixe para ele grudar ao soltar.
 const SNAP_DIST := Hex.SIZE * 2.4
-## Quão rápido o pedaço segue o mouse e gira até o alinhamento.
+## Quao rapido o pedaco segue o mouse e gira ate o alinhamento.
 const FOLLOW := 16.0
 const ALIGN := 14.0
 
-## Pedaço sendo arrastado (ou null).
+## Pedaco sendo arrastado (ou null).
 var ore: Ore = null
-## Pedaço sob o mouse, quando nada está sendo arrastado.
+## Pedaco sob o mouse, quando nada esta sendo arrastado.
 var hover: Ore = null
-## Onde o pedaço vai encaixar se for solto agora ({} = em lugar nenhum).
+## Onde o pedaco vai encaixar se for solto agora ({} = em lugar nenhum).
 var placement := {}
 var _turns := 0
 var _grab_offset := Vector2.ZERO
@@ -52,13 +52,13 @@ func step(delta: float, player: Player, ores: Array[Ore], mouse: Vector2, presse
 	queue_redraw()
 
 
-## Gira o pedaço segurado em passos de 60° (+1 horário, -1 anti-horário).
+## Gira o pedaco segurado em passos de 60 graus (+1 horario, -1 anti-horario).
 func turn(steps: int) -> void:
 	if ore != null:
 		_turns += steps
 
 
-## Solta o pedaço sem encaixar (ex.: game over).
+## Solta o pedaco sem encaixar (ex.: game over).
 func drop() -> void:
 	if ore != null and is_instance_valid(ore):
 		ore.dragged = false
@@ -71,20 +71,20 @@ func _grab(piece: Ore, mouse: Vector2) -> void:
 	ore = piece
 	ore.dragged = true
 	ore.z_index = 3
-	# Começa no alinhamento de 60° mais próximo do ângulo atual do pedaço.
+	# Comeca no alinhamento de 60 graus mais proximo do angulo atual do pedaco.
 	_turns = roundi(wrapf(ore.rotation - _player.rotation, -PI, PI) / (PI / 3.0))
 	_grab_offset = ore.global_position - mouse
 	hover = null
 
 
 func _drag(delta: float, mouse: Vector2) -> void:
-	# O pedaço segue o mouse (mantendo o ponto onde foi pego), preso ao alcance.
+	# O pedaco segue o mouse (mantendo o ponto onde foi pego), preso ao alcance.
 	var center := _player.global_position
 	var target := center + (mouse + _grab_offset - center).limit_length(reach(_player))
 	var new_pos := ore.global_position.lerp(target, 1.0 - exp(-FOLLOW * delta))
 	ore.velocity = (new_pos - ore.global_position) / maxf(delta, 0.0001)
 	ore.global_position = new_pos
-	# E gira até ficar alinhado com o grid da nave.
+	# E gira ate ficar alinhado com o grid da nave.
 	var aligned := _player.rotation + _turns * PI / 3.0
 	ore.rotation = lerp_angle(ore.rotation, aligned, 1.0 - exp(-ALIGN * delta))
 	placement = _player.find_placement(ore, _turns, SNAP_DIST)
@@ -129,7 +129,7 @@ func _draw() -> void:
 		var color := ore.main_color()
 		# Alcance do raio.
 		draw_arc(center, reach(_player), 0.0, TAU, 96, Color(color, 0.12), 2.0, true)
-		# Feixe da nave até o pedaço, com pulsos correndo por ele.
+		# Feixe da nave ate o pedaco, com pulsos correndo por ele.
 		var p := ore.global_position
 		draw_line(center, p, Color(color, 0.18), 9.0, true)
 		draw_line(center, p, Color(color, 0.7), 2.0, true)
@@ -147,7 +147,7 @@ func _draw() -> void:
 			draw_arc(center, reach(_player), 0.0, TAU, 96, Color(UIStyle.RED, 0.15), 2.0, true)
 
 
-## Hexágonos fantasmas nos encaixes onde o pedaço vai grudar.
+## Hexagonos fantasmas nos encaixes onde o pedaco vai grudar.
 func _draw_ghost() -> void:
 	var pulse := 0.5 + 0.5 * sin(_t * 10.0)
 	var corners := Hex.corners()

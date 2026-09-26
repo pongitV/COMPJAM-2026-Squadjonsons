@@ -1,8 +1,8 @@
 class_name Art
 extends RefCounted
-## Artes das células (flores de 19 hexágonos) e dos canhões. São juntadas em
+## Artes das celulas (flores de 19 hexagonos) e dos canhoes. Sao juntadas em
 ## dois atlas na primeira vez que forem usadas, para cada objeto continuar
-## sendo desenhado numa chamada só.
+## sendo desenhado numa chamada so.
 
 enum { CORE, HULL, COMMON, SHOTGUN, LASER, BOMB, ORE, ASTEROID }
 
@@ -22,11 +22,11 @@ const CANNON_FILES := {
 	Weapons.LASER: "cannon_laser",
 	Weapons.BOMB: "cannon_bomb",
 }
-## Largura (ponta a ponta) da flor na arte = largura da célula no jogo.
+## Largura (ponta a ponta) da flor na arte = largura da celula no jogo.
 const CELL_ART_WIDTH := 105.0
-## Centro da base do canhão, medido do topo da imagem (o cano aponta para baixo).
+## Centro da base do canhao, medido do topo da imagem (o cano aponta para baixo).
 const CANNON_PIVOT_Y := 30.0
-## Espaço vazio entre as imagens do atlas (evita "vazamento" nos mipmaps).
+## Espaco vazio entre as imagens do atlas (evita "vazamento" nos mipmaps).
 const PAD := 16
 
 static var _cell_atlas: Texture2D
@@ -42,7 +42,7 @@ static func scale() -> float:
 	return 2.0 * Hex.SIZE / CELL_ART_WIDTH
 
 
-## Tipo de arte de uma célula a partir do canhão que ela carrega.
+## Tipo de arte de uma celula a partir do canhao que ela carrega.
 static func for_weapon(weapon: int) -> int:
 	match weapon:
 		Weapons.COMMON: return COMMON
@@ -58,13 +58,13 @@ static func cell_atlas() -> Texture2D:
 	return _cell_atlas
 
 
-## Região da célula no atlas (UV de 0 a 1).
+## Regiao da celula no atlas (UV de 0 a 1).
 static func cell_uv(kind: int) -> Rect2:
 	cell_atlas()
 	return _cell_uv[kind]
 
 
-## Recorte do atlas com a flor de um tipo de célula (ícones da interface).
+## Recorte do atlas com a flor de um tipo de celula (icones da interface).
 static func cell_icon(kind: int) -> AtlasTexture:
 	var atlas := cell_atlas()
 	var uv := cell_uv(kind)
@@ -91,13 +91,13 @@ static func cannon_uv(weapon: int) -> Rect2:
 	return _cannon_uv[weapon]
 
 
-## Tamanho do canhão no jogo (px).
+## Tamanho do canhao no jogo (px).
 static func cannon_size(weapon: int) -> Vector2:
 	cannon_atlas()
 	return _cannon_size[weapon] * scale()
 
 
-## Distância do centro da célula até a ponta do cano (de onde sai o tiro).
+## Distancia do centro da celula ate a ponta do cano (de onde sai o tiro).
 static func muzzle_length(weapon: int) -> float:
 	return cannon_size(weapon).y - CANNON_PIVOT_Y * scale()
 

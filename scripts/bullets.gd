@@ -1,7 +1,7 @@
 class_name Bullets
 extends Node2D
-## Projéteis simples (canhão comum e shotgun). Ficam em arrays compactos e
-## são desenhados numa única chamada: naves grandes disparam muitos por vez.
+## Projeteis simples (canhao comum e shotgun). Ficam em arrays compactos e
+## sao desenhados numa unica chamada: naves grandes disparam muitos por vez.
 
 const RADIUS := 2.5
 const MAX_BULLETS := 4000
@@ -22,7 +22,7 @@ func spawn(origin: Vector2, velocity: Vector2, life: float, color: Color) -> voi
 	_color.append(color)
 
 
-## Move os projéteis e aplica acertos nos asteroides.
+## Move os projeteis e aplica acertos nos asteroides.
 func step(delta: float, asteroids: Array[Asteroid]) -> void:
 	var i := 0
 	while i < _pos.size():

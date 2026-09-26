@@ -1,19 +1,19 @@
 extends Node2D
-## Controlador principal: spawn, colisões, câmera e HUD.
+## Controlador principal: spawn, colisoes, camera e HUD.
 
-## Asteroides nascem esta distância além da borda da tela.
+## Asteroides nascem esta distancia alem da borda da tela.
 const SPAWN_MARGIN := 120.0
-## São removidos quando ficam mais longe que (raio da tela * fator).
+## Sao removidos quando ficam mais longe que (raio da tela * fator).
 const DESPAWN_FACTOR := 2.5
 const MAX_ASTEROIDS := 45
-## Máximo de minérios soltos na tela ao mesmo tempo.
+## Maximo de minerios soltos na tela ao mesmo tempo.
 const MAX_ORES := 150
-## Fração das células do asteroide que se perde quando ele se parte em minério.
+## Fracao das celulas do asteroide que se perde quando ele se parte em minerio.
 const ORE_LOSS := 0.2
-## Tamanho (em células) dos pedaços em que o asteroide se parte.
+## Tamanho (em celulas) dos pedacos em que o asteroide se parte.
 const PIECE_MIN := 2
 const PIECE_MAX := 4
-## Aproxima a câmera para as artes aparecerem maiores (1.0 = escala original).
+## Aproxima a camera para as artes aparecerem maiores (1.0 = escala original).
 const ART_ZOOM := 1.2
 
 var player: Player
@@ -33,7 +33,7 @@ var ores: Array[Ore] = []
 var elapsed := 0.0
 var score := 0
 var game_over := false
-## Estatísticas para a tela de game over.
+## Estatisticas para a tela de game over.
 var collected := 0
 var destroyed := 0
 var max_cells := 1
@@ -111,7 +111,7 @@ func _physics_process(delta: float) -> void:
 		elapsed += delta
 		player.aim = get_global_mouse_position()
 		player.step(delta)
-		# Tiro automático: cada canhão mira no asteroide mais próximo dele.
+		# Tiro automatico: cada canhao mira no asteroide mais proximo dele.
 		player.update_targets(delta, _asteroids_on_screen())
 		for shot in player.fire():
 			_fire_shot(shot)
@@ -141,7 +141,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Roda do mouse gira o pedaço que está sendo arrastado.
+	# Roda do mouse gira o pedaco que esta sendo arrastado.
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			tractor.turn(-1)
@@ -161,7 +161,7 @@ func _go_to_menu() -> void:
 	get_tree().change_scene_to_file(MainMenu.SCENE)
 
 
-# --- Canhões ----------------------------------------------------------------
+# --- Canhoes ----------------------------------------------------------------
 
 ## shot: {type, cell, origin, dir, target_pos} vindo de Player.fire().
 func _fire_shot(shot: Dictionary) -> void:
@@ -207,7 +207,7 @@ func _spawn_asteroids(delta: float) -> void:
 
 	var dist := _view_radius() + a.bound_radius + SPAWN_MARGIN
 	a.position = player.global_position + Vector2.from_angle(randf() * TAU) * dist
-	# Vai na direção geral do jogador, com um desvio aleatório.
+	# Vai na direcao geral do jogador, com um desvio aleatorio.
 	var heading := (player.global_position - a.position).normalized().rotated(randf_range(-0.6, 0.6))
 	var speed := randf_range(30.0, 85.0) * (1.2 - minf(n, 30) / 60.0)
 	a.velocity = heading * speed
@@ -217,9 +217,9 @@ func _spawn_asteroids(delta: float) -> void:
 	asteroids.append(a)
 
 
-## Tamanhos pequenos são mais comuns (mínimo Asteroid.MIN_SIZE); o máximo
-## cresce com o tempo e com o poder de fogo (número de canhões, já que o
-## casco não atira).
+## Tamanhos pequenos sao mais comuns (minimo Asteroid.MIN_SIZE); o maximo
+## cresce com o tempo e com o poder de fogo (numero de canhoes, ja que o
+## casco nao atira).
 func _roll_asteroid_size() -> int:
 	var cannons := 0
 	for n in player.weapon_counts().values():
@@ -235,7 +235,7 @@ func _collide_asteroids() -> void:
 			asteroids[i].collide_with(asteroids[j])
 
 
-## Asteroide destruído pelos canhões: pontos, progresso de canhão e minério.
+## Asteroide destruido pelos canhoes: pontos, progresso de canhao e minerio.
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
 	if not game_over:
@@ -249,12 +249,12 @@ func _destroy_asteroid(a: Asteroid) -> void:
 	a.queue_free()
 
 
-## O asteroide se parte em pedaços de PIECE_MIN..PIECE_MAX células conectadas,
-## no mesmo lugar em que estavam; ORE_LOSS das células some (vira poeira).
+## O asteroide se parte em pedacos de PIECE_MIN..PIECE_MAX celulas conectadas,
+## no mesmo lugar em que estavam; ORE_LOSS das celulas some (vira poeira).
 func _break_into_ore(a: Asteroid) -> void:
 	var keys := a.cells.keys()
 	keys.shuffle()
-	# Arredondamento sorteado: em média perde exatamente ORE_LOSS.
+	# Arredondamento sorteado: em media perde exatamente ORE_LOSS.
 	var exact := keys.size() * (1.0 - ORE_LOSS)
 	var count := int(exact) + (1 if randf() < exact - int(exact) else 0)
 	for i in range(count, keys.size()):
@@ -263,7 +263,7 @@ func _break_into_ore(a: Asteroid) -> void:
 	if kept.is_empty():
 		return
 
-	# Às vezes uma das células é de canhão especial (mais chance em asteroides maiores).
+	# As vezes uma das celulas e de canhao especial (mais chance em asteroides maiores).
 	var weapons := {}
 	if randf() < Weapons.special_drop_chance(a.size):
 		weapons[kept[randi() % kept.size()]] = Weapons.roll_special()
@@ -282,9 +282,9 @@ func _break_into_ore(a: Asteroid) -> void:
 	_trim_ores()
 
 
-## Divide células em grupos conectados de PIECE_MIN..PIECE_MAX células.
-## Começa e cresce pelas células com menos vizinhos livres (as que ficariam
-## isoladas) e, no fim, cola as sobras de 1 célula num pedaço vizinho.
+## Divide celulas em grupos conectados de PIECE_MIN..PIECE_MAX celulas.
+## Comeca e cresce pelas celulas com menos vizinhos livres (as que ficariam
+## isoladas) e, no fim, cola as sobras de 1 celula num pedaco vizinho.
 func _split_into_pieces(keys: Array) -> Array:
 	var left := {}
 	for h in keys:
@@ -311,7 +311,7 @@ func _split_into_pieces(keys: Array) -> Array:
 			piece_of[h] = pieces.size()
 		pieces.append(piece)
 
-	# Sobras de 1 célula entram num pedaço vizinho (ele pode passar de PIECE_MAX).
+	# Sobras de 1 celula entram num pedaco vizinho (ele pode passar de PIECE_MAX).
 	for i in pieces.size():
 		if pieces[i].size() != 1:
 			continue
@@ -326,7 +326,7 @@ func _split_into_pieces(keys: Array) -> Array:
 	return pieces.filter(func(piece): return not piece.is_empty())
 
 
-## A célula com menos vizinhos ainda livres (desempate aleatório).
+## A celula com menos vizinhos ainda livres (desempate aleatorio).
 func _most_isolated(candidates: Array, left: Dictionary) -> Vector2i:
 	var best: Vector2i = candidates[0]
 	var best_rank := INF
@@ -348,8 +348,8 @@ func _add_ore(ore: Ore) -> void:
 	ores.append(ore)
 
 
-## Limita os minérios soltos: remove os mais antigos, preferindo os sem
-## canhão. O pedaço que está sendo arrastado nunca sai.
+## Limita os minerios soltos: remove os mais antigos, preferindo os sem
+## canhao. O pedaco que esta sendo arrastado nunca sai.
 func _trim_ores() -> void:
 	while ores.size() > MAX_ORES:
 		var loose := ores.filter(func(o): return not o.dragged)
@@ -357,9 +357,9 @@ func _trim_ores() -> void:
 		_remove_ore(plain[0] if not plain.is_empty() else loose[0])
 
 
-## Contato célula a célula: cada célula de asteroide que encosta na nave
-## destrói a célula da nave que ela tocou; depois de CELL_CHARGES destruições
-## ela some. Partes da nave que se soltarem do núcleo viram pedaços soltos.
+## Contato celula a celula: cada celula de asteroide que encosta na nave
+## destroi a celula da nave que ela tocou; depois de CELL_CHARGES destruicoes
+## ela some. Partes da nave que se soltarem do nucleo viram pedacos soltos.
 func _check_player_collisions() -> void:
 	var hits := PackedVector2Array()
 	var core_hit := false
@@ -411,14 +411,14 @@ func _check_player_collisions() -> void:
 		_detach_from_ship(piece)
 
 
-## Asteroide pequeno demais (menos de MIN_SIZE células) vira poeira.
+## Asteroide pequeno demais (menos de MIN_SIZE celulas) vira poeira.
 func _crumble(a: Asteroid) -> void:
 	for h in a.cells:
 		fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 6, 90.0)
 
 
-## Parte da nave que perdeu a ligação com o núcleo: vira um pedaço solto,
-## com os canhões que tinha, que pode ser encaixado de novo.
+## Parte da nave que perdeu a ligacao com o nucleo: vira um pedaco solto,
+## com os canhoes que tinha, que pode ser encaixado de novo.
 func _detach_from_ship(piece: Dictionary) -> void:
 	var ore := Ore.new()
 	ore.setup_from(player, piece.keys(), piece)
@@ -429,9 +429,9 @@ func _detach_from_ship(piece: Dictionary) -> void:
 	_trim_ores()
 
 
-# --- Minérios ---------------------------------------------------------------
+# --- Minerios ---------------------------------------------------------------
 
-## Minérios só flutuam; viram parte da nave quando o raio trator os encaixa.
+## Minerios so flutuam; viram parte da nave quando o raio trator os encaixa.
 func _update_ores(delta: float) -> void:
 	for ore in ores.duplicate():
 		ore.step(delta)
@@ -476,10 +476,10 @@ func _despawn_far_objects() -> void:
 			_remove_ore(ore)
 
 
-# --- Câmera / HUD -----------------------------------------------------------
+# --- Camera / HUD -----------------------------------------------------------
 
-## Os canhões só miram no que aparece na tela: o alcance deles é maior que
-## a área visível, e o jogador precisa ver o asteroide antes dele ser destruído.
+## Os canhoes so miram no que aparece na tela: o alcance deles e maior que
+## a area visivel, e o jogador precisa ver o asteroide antes dele ser destruido.
 func _asteroids_on_screen() -> Array[Asteroid]:
 	var half := get_viewport_rect().size / camera.zoom * 0.5
 	var view := Rect2(camera.get_screen_center_position() - half, half * 2.0)
@@ -495,7 +495,7 @@ func _view_radius() -> float:
 
 
 func _update_camera(delta: float) -> void:
-	# Afasta a câmera conforme a nave cresce.
+	# Afasta a camera conforme a nave cresce.
 	var target_zoom := clampf(260.0 / (player.bound_radius + 210.0), 0.3, 1.2) * ART_ZOOM
 	camera.zoom = camera.zoom.lerp(Vector2.ONE * target_zoom, 1.0 - exp(-2.0 * delta))
 	camera.global_position = camera.global_position.lerp(player.global_position, 1.0 - exp(-8.0 * delta))

@@ -78,7 +78,7 @@ func set_playing(playing: bool) -> void:
 ## Texto que salta e sobe a partir de um ponto da tela.
 func popup(text: String, color: Color, screen_pos: Vector2, font_size: int = 18) -> void:
 	var l := UIStyle.label(text, font_size, color)
-	# Mesma fonte da UI; contorno fino na cor dos painéis para ler sobre o jogo.
+	# Mesma fonte da UI; contorno fino na cor dos paineis para ler sobre o jogo.
 	l.add_theme_font_override("font", UIStyle.display_font())
 	l.add_theme_constant_override("outline_size", 3)
 	l.add_theme_color_override("font_outline_color", Color(UIStyle.PANEL_BG, 0.9))
@@ -173,7 +173,7 @@ func show_game_over(stats: Dictionary) -> void:
 
 	overlay.modulate.a = 0.0
 	var fade := overlay.create_tween()
-	fade.tween_interval(0.6)  # deixa a explosão aparecer antes
+	fade.tween_interval(0.6)  # deixa a explosao aparecer antes
 	fade.tween_property(overlay, "modulate:a", 1.0, 0.4)
 	fade.tween_callback(restart.grab_focus)
 

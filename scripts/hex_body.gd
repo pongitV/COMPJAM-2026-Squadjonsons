@@ -1,26 +1,26 @@
 class_name HexBody
 extends Node2D
-## Base de todo objeto composto por células hexagonais
-## (jogador, asteroides e minérios).
+## Base de todo objeto composto por celulas hexagonais
+## (jogador, asteroides e minerios).
 
-## Distância entre centros a partir da qual duas células se tocam.
+## Distancia entre centros a partir da qual duas celulas se tocam.
 const CONTACT_DIST := Hex.SQRT3 * Hex.SIZE * 0.92
-## "Nenhuma célula" (retorno de find_cell_near).
+## "Nenhuma celula" (retorno de find_cell_near).
 const NO_CELL := Vector2i(1 << 30, 1 << 30)
 
-## Vector2i (coordenada axial) -> dado da célula (true, ou o tipo de canhão)
+## Vector2i (coordenada axial) -> dado da celula (true, ou o tipo de canhao)
 var cells: Dictionary = {}
-## Deslocamento do centro de rotação em relação à célula (0, 0).
+## Deslocamento do centro de rotacao em relacao a celula (0, 0).
 var center_offset := Vector2.ZERO
 var velocity := Vector2.ZERO
 var angular_velocity := 0.0
-## Raio de um círculo que envolve o objeto inteiro (broad-phase).
+## Raio de um circulo que envolve o objeto inteiro (broad-phase).
 var bound_radius := Hex.SIZE
 ## 0..1, usado para piscar ao receber dano.
 var flash := 0.0
 
-# Malha em cache: cada célula é um quadrado com a arte da flor (do atlas
-# Art), e todas viram UMA lista de triângulos, recalculada só quando a forma
+# Malha em cache: cada celula e um quadrado com a arte da flor (do atlas
+# Art), e todas viram UMA lista de triangulos, recalculada so quando a forma
 # ou as cores mudam.
 var _geometry_dirty := true
 var _colors_dirty := true
@@ -39,7 +39,7 @@ func cell_global(h: Vector2i) -> Vector2:
 	return global_transform * cell_local(h)
 
 
-## Converte uma posição global para o espaço da grade deste objeto.
+## Converte uma posicao global para o espaco da grade deste objeto.
 func global_to_grid(p: Vector2) -> Vector2:
 	return global_transform.affine_inverse() * p + center_offset
 
@@ -59,13 +59,13 @@ func refresh_colors() -> void:
 	queue_redraw()
 
 
-## Existe alguma célula deste objeto a menos de `radius` do ponto global?
+## Existe alguma celula deste objeto a menos de `radius` do ponto global?
 func has_cell_near(global_p: Vector2, radius: float) -> bool:
 	return find_cell_near(global_p, radius) != NO_CELL
 
 
-## Célula mais próxima do ponto global, se estiver a menos de `radius`
-## (senão NO_CELL). Só olha a célula sob o ponto e as 6 vizinhas.
+## Celula mais proxima do ponto global, se estiver a menos de `radius`
+## (senao NO_CELL). So olha a celula sob o ponto e as 6 vizinhas.
 func find_cell_near(global_p: Vector2, radius: float) -> Vector2i:
 	var grid_p := global_to_grid(global_p)
 	var center := Hex.from_pixel(grid_p)
@@ -82,8 +82,8 @@ func find_cell_near(global_p: Vector2, radius: float) -> Vector2i:
 	return best
 
 
-## Move o pivô para o centro das células sem tirá-las do lugar (usado quando
-## um objeto ganha ou perde células, ou nasce de pedaços de outro).
+## Move o pivo para o centro das celulas sem tira-las do lugar (usado quando
+## um objeto ganha ou perde celulas, ou nasce de pedacos de outro).
 func recenter() -> void:
 	if cells.is_empty():
 		return
@@ -96,12 +96,12 @@ func recenter() -> void:
 	recompute_bounds()
 
 
-## Tinta multiplicada sobre a arte da célula (branco = arte original).
+## Tinta multiplicada sobre a arte da celula (branco = arte original).
 func cell_color(_h: Vector2i) -> Color:
 	return Color.WHITE
 
 
-## Qual arte (Art.CORE, Art.HULL, ...) a célula usa.
+## Qual arte (Art.CORE, Art.HULL, ...) a celula usa.
 func cell_art(_h: Vector2i) -> int:
 	return Art.HULL
 
@@ -117,7 +117,7 @@ func _draw() -> void:
 		_uvs, PackedInt32Array(), PackedFloat32Array(), Art.cell_atlas().get_rid())
 
 
-## Cada célula: um quadrado do tamanho da flor, centrado na célula.
+## Cada celula: um quadrado do tamanho da flor, centrado na celula.
 func _rebuild_geometry() -> void:
 	_geometry_dirty = false
 	_colors_dirty = true

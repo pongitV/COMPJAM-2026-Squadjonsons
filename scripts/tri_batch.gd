@@ -1,8 +1,8 @@
 class_name TriBatch
 extends RefCounted
-## Acumula formas simples (retângulos, quadrados com textura) numa
-## única lista de triângulos, desenhada com uma só chamada em vez de uma por
-## forma. Num mesmo lote, use só formas com textura (add_quad) ou só sem.
+## Acumula formas simples (retangulos, quadrados com textura) numa
+## unica lista de triangulos, desenhada com uma so chamada em vez de uma por
+## forma. Num mesmo lote, use so formas com textura (add_quad) ou so sem.
 
 var points := PackedVector2Array()
 var colors := PackedColorArray()
@@ -33,8 +33,8 @@ func add_rect(rect: Rect2, color: Color) -> void:
 		indices.append(base + i)
 
 
-## Quadrilátero com textura: `corners` em sentido horário a partir do canto
-## superior esquerdo da região `uv` do atlas.
+## Quadrilatero com textura: `corners` em sentido horario a partir do canto
+## superior esquerdo da regiao `uv` do atlas.
 func add_quad(corners: Array, uv: Rect2, color: Color) -> void:
 	var base := points.size()
 	for p in corners:

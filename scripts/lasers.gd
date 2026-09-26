@@ -1,9 +1,9 @@
 class_name Lasers
 extends Node2D
-## Raios dos canhões laser: saem da ponta do cano para fora da nave por
-## LASER_DURATION segundos, acompanhando a nave, com dano contínuo.
+## Raios dos canhoes laser: saem da ponta do cano para fora da nave por
+## LASER_DURATION segundos, acompanhando a nave, com dano continuo.
 
-## Célula do jogador (Vector2i) -> segundos restantes de raio.
+## Celula do jogador (Vector2i) -> segundos restantes de raio.
 var _beams := {}
 var _player: Player
 var _t := 0.0
@@ -49,11 +49,11 @@ func _draw() -> void:
 		return
 	var color := Weapons.color(Weapons.LASER)
 	for cell in _beams:
-		# A célula pode ter sido destruída depois do step deste frame.
+		# A celula pode ter sido destruida depois do step deste frame.
 		if _player.weapon_at(cell) != Weapons.LASER:
 			continue
 		var left: float = _beams[cell]
-		# Liga rápido, desliga suave e tremula um pouco.
+		# Liga rapido, desliga suave e tremula um pouco.
 		var fade := clampf((Weapons.LASER_DURATION - left) / 0.08, 0.0, 1.0) * clampf(left / 0.25, 0.0, 1.0)
 		var w := Weapons.LASER_WIDTH * fade * (1.0 + 0.15 * sin(_t * 45.0))
 		var p0 := _player.muzzle(cell)

@@ -1,6 +1,6 @@
 # COMPJAM-2026-Squadjonsons
 
-**Hex Asteroids**: um jogo inspirado no Asteroids clássico, feito em Godot 4.5. Todo objeto é formado por células hexagonais.
+**HexCore**: um jogo inspirado no Asteroids clássico, feito em Godot 4.5. Todo objeto é formado por células hexagonais.
 
 ## Como rodar
 Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
