@@ -139,8 +139,6 @@ static func _line(parent: VBoxContainer, art: int, text: String, heading: String
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	if art == Art.CORE:
-		icon.self_modulate = Player.CORE_COLOR.lightened(0.3)  # mesmo tom do jogo
 	line.add_child(icon)
 	if heading != "":
 		var name_label := UIStyle.label(heading, 14, color, UIStyle.DISPLAY)

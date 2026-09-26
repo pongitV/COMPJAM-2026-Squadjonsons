@@ -173,12 +173,12 @@ func _build_main() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 
-	# Titulo "HexCore": "hex" em ciano e "core" no dourado do nucleo.
+	# Titulo "HexCore": "hex" em ciano e "core" branco com brilho azul, como o nucleo.
 	var title := HBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
-	for part in [["HEX", UIStyle.CYAN], ["CORE", Player.CORE_COLOR]]:
+	for part in [["HEX", UIStyle.CYAN, UIStyle.CYAN], ["CORE", Color.WHITE, Player.CORE_COLOR]]:
 		var l := UIStyle.label(part[0], 96, part[1], UIStyle.DISPLAY)
-		l.add_theme_color_override("font_shadow_color", Color(part[1], 0.45))
+		l.add_theme_color_override("font_shadow_color", Color(part[2], 0.55))
 		l.add_theme_constant_override("shadow_offset_x", 0)
 		l.add_theme_constant_override("shadow_offset_y", 0)
 		l.add_theme_constant_override("shadow_outline_size", 14)

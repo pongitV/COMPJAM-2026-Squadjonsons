@@ -7,11 +7,11 @@ enum { NONE, COMMON, SHOTGUN, LASER, BOMB }
 
 ## Cores das artes (celulas e canhoes).
 const COLORS := {
-	NONE: Color("#cfcfcf"),
-	COMMON: Color("#459cff"),
-	SHOTGUN: Color("#ffb41f"),
+	NONE: Color("#e8ecf2"),
+	COMMON: Color("#2f8cff"),
+	SHOTGUN: Color("#ff9a1a"),
 	LASER: Color("#ff2a2a"),
-	BOMB: Color("#f72df0"),
+	BOMB: Color("#b44dff"),
 }
 const NAMES := {
 	NONE: "CASCO",

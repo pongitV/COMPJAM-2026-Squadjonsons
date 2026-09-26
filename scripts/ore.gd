@@ -6,7 +6,7 @@ extends HexBody
 ## cells: Vector2i -> tipo de canhao (Weapons.NONE = minerio verde, vira casco).
 
 ## Cor da arte do minerio verde (para feixe, efeitos e textos).
-const COLOR := Color("#6ffc12")
+const COLOR := Color("#4df0b0")
 const LIFETIME := 25.0
 const SPECIAL_LIFETIME := 35.0
 

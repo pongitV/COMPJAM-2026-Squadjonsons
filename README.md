@@ -16,7 +16,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | Reiniciar (após game over) | R |
 
 ## Regras
-- **Jogador**: começa com 1 célula, a *core* (dourada), com um canhão comum. Só células com canhão atiram, **sozinhas**: cada canhão mira no asteroide mais próximo dele (com mira antecipada). As demais células são casco e protegem a core.
+- **Jogador**: começa com 1 célula, a *core* (branca com detalhes azuis), com um canhão comum. Só células com canhão atiram, **sozinhas**: cada canhão mira no asteroide mais próximo dele (com mira antecipada). As demais células são casco e protegem a core.
 - **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e batem entre si (quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. O dano na nave é por contato: cada célula do asteroide que encosta na nave destrói a célula da nave que ela tocou; depois de destruir 2, ela some (se o asteroide se partir, as partes seguem como asteroides separados; partes com menos de 3 células viram poeira). Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
 - **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** de 2 a 4 células conectadas, no mesmo lugar em que estavam; 20% das células se perdem. Os pedaços não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Minério verde vira casco; às vezes uma célula é colorida e vira um canhão especial (mais chance em asteroides maiores).
 
@@ -26,7 +26,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | Comum | Azul | Tiro único no asteroide mais próximo | 1 a cada 5 asteroides destruídos. Só fica na camada externa da nave: se for cercado, muda sozinho para a borda |
 | Shotgun | Laranja | 6 tiros em leque no asteroide mais próximo, alcance curto | Minério laranja |
 | Laser | Vermelho | Dispara quando um asteroide cruza sua linha: raio para fora da nave (do núcleo para o canhão) com dano contínuo por 3 s; gire a nave (clique direito) para mirar | Minério vermelho |
-| Bomba | Magenta | Míssil lento lançado no asteroide mais próximo, explode com dano em área | Minério magenta |
+| Bomba | Roxo | Míssil lento lançado no asteroide mais próximo, explode com dano em área | Minério roxo |
 
 ## Estrutura
 | Arquivo | Conteúdo |

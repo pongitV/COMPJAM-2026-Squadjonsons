@@ -22,10 +22,12 @@ const CANNON_FILES := {
 	Weapons.LASER: "cannon_laser",
 	Weapons.BOMB: "cannon_bomb",
 }
-## Largura (ponta a ponta) da flor na arte = largura da celula no jogo.
-const CELL_ART_WIDTH := 105.0
-## Centro da base do canhao, medido do topo da imagem (o cano aponta para baixo).
-const CANNON_PIVOT_Y := 30.0
+## O canhao gira em torno deste ponto da imagem (fracao da altura, a partir
+## do topo). Na arte o cano aponta para cima (-Y).
+const CANNON_PIVOT := 0.5
+## Aumento do canhao em relacao a celula dele: na escala da arte ele tem o
+## tamanho da celula e some em cima dela (mesma cor).
+const CANNON_ZOOM := 1.6
 ## Espaco vazio entre as imagens do atlas (evita "vazamento" nos mipmaps).
 const PAD := 16
 
@@ -37,9 +39,11 @@ static var _cannon_uv := {}
 static var _cannon_size := {}
 
 
-## Pixels do jogo por pixel da arte.
-static func scale() -> float:
-	return 2.0 * Hex.SIZE / CELL_ART_WIDTH
+## Pixels do jogo por pixel da arte: cada flor ocupa a largura (ponta a
+## ponta) de uma celula, independente do tamanho da imagem.
+static func cell_scale(kind: int) -> float:
+	cell_atlas()
+	return 2.0 * Hex.SIZE / _cell_size[kind].x
 
 
 ## Tipo de arte de uma celula a partir do canhao que ela carrega.
@@ -76,8 +80,7 @@ static func cell_icon(kind: int) -> AtlasTexture:
 
 ## Tamanho da flor no jogo (px).
 static func cell_size(kind: int) -> Vector2:
-	cell_atlas()
-	return _cell_size[kind] * scale()
+	return _cell_size[kind] * cell_scale(kind)
 
 
 static func cannon_atlas() -> Texture2D:
@@ -91,15 +94,22 @@ static func cannon_uv(weapon: int) -> Rect2:
 	return _cannon_uv[weapon]
 
 
-## Tamanho do canhao no jogo (px).
+## Tamanho do canhao no jogo (px): a escala da celula do canhao vezes
+## CANNON_ZOOM.
 static func cannon_size(weapon: int) -> Vector2:
 	cannon_atlas()
-	return _cannon_size[weapon] * scale()
+	return _cannon_size[weapon] * cell_scale(for_weapon(weapon)) * CANNON_ZOOM
+
+
+## Ponto de giro do canhao, em pixels do jogo a partir do canto superior esquerdo.
+static func cannon_pivot(weapon: int) -> Vector2:
+	var size := cannon_size(weapon)
+	return Vector2(size.x * 0.5, size.y * CANNON_PIVOT)
 
 
 ## Distancia do centro da celula ate a ponta do cano (de onde sai o tiro).
 static func muzzle_length(weapon: int) -> float:
-	return cannon_size(weapon).y - CANNON_PIVOT_Y * scale()
+	return cannon_pivot(weapon).y
 
 
 static func _build_atlas(files: Dictionary, uv_out: Dictionary, size_out: Dictionary) -> Texture2D:

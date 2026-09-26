@@ -7,7 +7,7 @@ extends HexBody
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
 ## Cor media da arte do asteroide (base do tingimento de dano e dos efeitos).
-const ART_COLOR := Color("#756348")
+const ART_COLOR := Color("#8a3b2c")
 ## Quantas celulas da nave cada celula do asteroide destroi antes de sumir.
 const CELL_CHARGES := 2
 ## Menor asteroide possivel; partes menores que isso se desfazem.

@@ -13,8 +13,12 @@ const DAMPING := 0.25
 ## Velocidade de giro (rad/s) de uma nave pequena, segurando "rotate".
 const TURN_SPEED := 3.5
 
-const CORE_COLOR := Color(1.0, 0.85, 0.35)
+## Azul dos detalhes da arte do nucleo (seta de giro, explosao, titulo).
+const CORE_COLOR := Color("#3a7bff")
 const HURT_COLOR := Color(1.0, 0.25, 0.2)
+## Contorno dos canhoes: a propria arte em preto, deslocada para os lados.
+const OUTLINE_COLOR := Color(0.0, 0.0, 0.0, 0.85)
+const OUTLINE_OFFSETS := [Vector2(1.2, 0), Vector2(-1.2, 0), Vector2(0, 1.2), Vector2(0, -1.2)]
 
 ## Alvos sao recalculados a esta frequencia (nao precisa ser todo frame).
 const RETARGET_INTERVAL := 0.1
@@ -371,10 +375,9 @@ func _remove_cell(h: Vector2i) -> void:
 	_cooldowns.erase(h)
 
 
-## O nucleo usa a arte cinza com centro preto, tingida de dourado.
-func cell_color(h: Vector2i) -> Color:
-	var base := CORE_COLOR.lightened(0.3) if h == CORE else Color.WHITE
-	return base.lerp(HURT_COLOR, flash * 0.7)
+## Tinta das celulas: so o vermelho de dano (a arte ja tem as cores).
+func cell_color(_h: Vector2i) -> Color:
+	return Color.WHITE.lerp(HURT_COLOR, flash * 0.7)
 
 
 func cell_art(h: Vector2i) -> int:
@@ -398,19 +401,19 @@ func _draw_heading() -> void:
 	draw_dashed_line(Vector2(Hex.SIZE, 0), tip - Vector2(14, 0), Color(CORE_COLOR, 0.45), 2.0, 6.0)
 
 
-## Canhoes: a arte de cada um, girada em torno da base (no centro da celula)
-## para o cano apontar para o alvo. Todos numa chamada so (atlas). Recarregando
-## o canhao fica mais escuro; comum preso no meio da nave fica bem apagado.
+## Canhoes: a arte de cada um, girada em torno do proprio centro (no centro da celula)
+## para o cano apontar para o alvo, com um contorno escuro para destacar da
+## celula (que tem a mesma cor). Todos numa chamada so (atlas). Recarregando o
+## canhao fica mais escuro; comum preso no meio da nave fica bem apagado.
 func _draw_cannons() -> void:
 	_cannon_sprites.clear()
-	var s := Art.scale()
 	for h in _cannon_cells:
 		var w: int = cells[h]
-		var size := Art.cannon_size(w)
-		var pivot := Vector2(size.x * 0.5, Art.CANNON_PIVOT_Y * s)
+		var size := Art.cannon_size(w) / 2
+		var pivot := Art.cannon_pivot(w) / 2
 		# _draw usa o espaco local da nave, entao desfaz a rotacao da direcao global.
-		# Na arte o cano aponta para baixo (+Y).
-		var angle := barrel_dir(h).rotated(-rotation).angle() - PI / 2.0
+		# Na arte o cano aponta para cima (-Y).
+		var angle := barrel_dir(h).rotated(-rotation).angle() + PI / 2.0
 		var c := cell_local(h)
 		var corners := [
 			c + (-pivot).rotated(angle),
@@ -418,7 +421,10 @@ func _draw_cannons() -> void:
 			c + (size - pivot).rotated(angle),
 			c + (Vector2(0.0, size.y) - pivot).rotated(angle),
 		]
+		var uv := Art.cannon_uv(w)
+		for offset in OUTLINE_OFFSETS:
+			_cannon_sprites.add_quad(corners.map(func(p): return p + offset), uv, OUTLINE_COLOR)
 		var charged: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
 		var shade := (0.6 + 0.4 * charged) if is_armed(h) else 0.35
-		_cannon_sprites.add_quad(corners, Art.cannon_uv(w), Color(shade, shade, shade))
+		_cannon_sprites.add_quad(corners, uv, Color(shade, shade, shade))
 	_cannon_sprites.draw(get_canvas_item(), Art.cannon_atlas())
