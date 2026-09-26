@@ -75,11 +75,8 @@ static func color(weapon: int) -> Color:
 	return COLORS[weapon]
 
 
-## Chance de um asteroide destruido soltar um minerio de canhao especial.
-static func special_drop_chance(asteroid_size: int) -> float:
-	return clampf(0.06 + asteroid_size * 0.025, 0.0, 0.7)
-
-
+## Qual canhao especial vem no minerio colorido (a chance de vir um fica em
+## AsteroidConfig.special_drop_chance).
 static func roll_special() -> int:
 	var r := randf()
 	for w in SPECIAL_WEIGHTS:

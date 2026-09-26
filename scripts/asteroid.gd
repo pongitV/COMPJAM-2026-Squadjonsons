@@ -1,20 +1,17 @@
 class_name Asteroid
 extends HexBody
-## Aglomerado aleatorio de n celulas (n >= MIN_SIZE). E destruido apos
-## ceil(n^(3/2)) disparos. Ao encostar na nave, cada celula dele destroi
-## CELL_CHARGES celulas da nave (as que tocar) e depois some; se o asteroide
-## se partir, os pedacos viram asteroides separados. Asteroides batem entre si.
+## Aglomerado aleatorio de n celulas (n >= config.min_size), com HP dado por
+## config.max_hp_for(n). Ao encostar na nave, cada celula dele destroi
+## config.cell_charges celulas da nave (as que tocar) e depois some; se o
+## asteroide se partir, os pedacos viram asteroides separados. Asteroides
+## batem entre si. Os numeros de balanceamento ficam em AsteroidConfig.
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
 ## Cor media da arte do asteroide (base do tingimento de dano e dos efeitos).
 const ART_COLOR := Color("#8a3b2c")
-## Quantas celulas da nave cada celula do asteroide destroi antes de sumir.
-const CELL_CHARGES := 2
-## Menor asteroide possivel; partes menores que isso se desfazem.
-const MIN_SIZE := 3
-## Elasticidade da batida entre asteroides (0 = gruda, 1 = quique perfeito).
-const BOUNCE := 0.6
-const MAX_SPIN := 3.0
+
+## Parametros em uso (o jogo troca pelo preset escolhido no no Game).
+static var config: AsteroidConfig = preload("res://config/asteroids.tres")
 
 var size := 1
 var max_hp := 1
@@ -34,10 +31,10 @@ func setup(n: int) -> void:
 		var h: Vector2i = keys[randi() % keys.size()]
 		cells[h + Hex.DIRS[randi() % 6]] = true
 	for h in cells:
-		charges[h] = CELL_CHARGES
+		charges[h] = config.cell_charges
 
 	size = cells.size()
-	max_hp = ceili(pow(size, 1.5))
+	max_hp = config.max_hp_for(size)
 	hp = max_hp
 	base_color = ART_COLOR
 	recenter()
@@ -110,14 +107,14 @@ func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
 	position = source.position
 	center_offset = source.center_offset
 	angular_velocity = source.angular_velocity
-	velocity = source.velocity + Vector2.from_angle(randf() * TAU) * 15.0
+	velocity = source.velocity + Vector2.from_angle(randf() * TAU) * config.split_speed
 	_resize(hp_ratio)
 	recenter()
 
 
 func _resize(hp_ratio: float) -> void:
 	size = cells.size()
-	max_hp = ceili(pow(size, 1.5))
+	max_hp = config.max_hp_for(size)
 	hp = maxi(1, ceili(hp_ratio * max_hp))
 	_update_tint()
 
@@ -138,10 +135,10 @@ func collide_with(other: Asteroid) -> void:
 	var touching := 0
 	for h in small.cells:
 		var p := small.cell_global(h)
-		var hit := big.find_cell_near(p, CONTACT_DIST)
-		if hit == NO_CELL:
+		var touched := big.find_cell_near(p, CONTACT_DIST)
+		if touched == NO_CELL:
 			continue
-		var q := big.cell_global(hit)
+		var q := big.cell_global(touched)
 		contact += (p + q) * 0.5
 		normal += p - q
 		depth = maxf(depth, CONTACT_DIST - p.distance_to(q))
@@ -165,12 +162,13 @@ func collide_with(other: Asteroid) -> void:
 	if approach < 0.0:
 		var rn_small := r_small.cross(normal)
 		var rn_big := r_big.cross(normal)
-		var j := -(1.0 + BOUNCE) * approach / (inv_small + inv_big
+		var j := -(1.0 + config.bounce) * approach / (inv_small + inv_big
 			+ rn_small * rn_small * inv_i_small + rn_big * rn_big * inv_i_big)
 		small.velocity += normal * j * inv_small
 		big.velocity -= normal * j * inv_big
-		small.angular_velocity = clampf(small.angular_velocity + rn_small * j * inv_i_small, -MAX_SPIN, MAX_SPIN)
-		big.angular_velocity = clampf(big.angular_velocity - rn_big * j * inv_i_big, -MAX_SPIN, MAX_SPIN)
+		var spin := config.spin_limit
+		small.angular_velocity = clampf(small.angular_velocity + rn_small * j * inv_i_small, -spin, spin)
+		big.angular_velocity = clampf(big.angular_velocity - rn_big * j * inv_i_big, -spin, spin)
 	# Separa proporcionalmente a massa (o mais leve anda mais).
 	var push := normal * depth * 0.8 / (inv_small + inv_big)
 	small.position += push * inv_small

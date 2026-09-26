@@ -1,20 +1,12 @@
 extends Node2D
 ## Controlador principal: spawn, colisoes, camera e HUD.
 
-## Asteroides nascem esta distancia alem da borda da tela.
-const SPAWN_MARGIN := 120.0
-## Sao removidos quando ficam mais longe que (raio da tela * fator).
-const DESPAWN_FACTOR := 2.5
-const MAX_ASTEROIDS := 100
-## Maximo de minerios soltos na tela ao mesmo tempo.
-const MAX_ORES := 150
-## Fracao das celulas do asteroide que se perde quando ele se parte em minerio.
-const ORE_LOSS := 0.2
-## Tamanho (em celulas) dos pedacos em que o asteroide se parte.
-const PIECE_MIN := 2
-const PIECE_MAX := 4
 ## Aproxima a camera para as artes aparecerem maiores (1.0 = escala original).
 const ART_ZOOM := 1.2
+
+## Parametros dos asteroides (spawn, tamanho, HP, velocidade, minerio).
+## Troque por outro preset .tres no Inspector do no Game.
+@export var asteroid_config: AsteroidConfig = preload("res://config/asteroids.tres")
 
 var player: Player
 var bullets: Bullets
@@ -40,12 +32,17 @@ var collected := 0
 var destroyed := 0
 var max_cells := 1
 var best_score := 0
-var _spawn_timer := 1.0
+var _spawn_timer := 0.0
 var _shake := 0.0
+## Atalho para asteroid_config.
+var _cfg: AsteroidConfig
 
 
 func _ready() -> void:
 	randomize()
+	_cfg = asteroid_config
+	Asteroid.config = _cfg
+	_spawn_timer = _cfg.first_spawn_delay
 	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	InputActions.ensure_defaults()
@@ -226,36 +223,30 @@ func _spawn_asteroids(delta: float) -> void:
 	if game_over:
 		return
 	_spawn_timer -= delta
-	if _spawn_timer > 0.0 or asteroids.size() >= MAX_ASTEROIDS:
+	if _spawn_timer > 0.0 or asteroids.size() >= _cfg.max_asteroids:
 		return
 	# O intervalo diminui com o tempo de jogo.
-	_spawn_timer = maxf(0.55, 2.0 - elapsed * 0.008) * randf_range(0.7, 1.3)
+	_spawn_timer = _cfg.spawn_interval(elapsed)
 
-	var n := _roll_asteroid_size()
+	# O tamanho maximo cresce com o tempo e com o poder de fogo (numero de
+	# canhoes, ja que o casco nao atira).
+	var cannons := 0
+	for count in player.weapon_counts().values():
+		cannons += count
+	var n := _cfg.roll_size(elapsed, cannons)
 	var a := Asteroid.new()
 	a.setup(n)
 
-	var dist := _view_radius() + a.bound_radius + SPAWN_MARGIN
+	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
 	a.position = player.global_position + Vector2.from_angle(randf() * TAU) * dist
 	# Vai na direcao geral do jogador, com um desvio aleatorio.
-	var heading := (player.global_position - a.position).normalized().rotated(randf_range(-0.6, 0.6))
-	var speed := randf_range(30.0, 85.0) * (1.2 - minf(n, 30) / 60.0)
-	a.velocity = heading * speed
-	a.angular_velocity = randf_range(-0.8, 0.8) / sqrt(n)
+	var heading := (player.global_position - a.position).normalized() \
+		.rotated(randf_range(-_cfg.aim_spread, _cfg.aim_spread))
+	a.velocity = heading * _cfg.roll_speed(n)
+	a.angular_velocity = _cfg.roll_spin(n)
 	a.rotation = randf() * TAU
 	add_child(a)
 	asteroids.append(a)
-
-
-## Tamanhos pequenos sao mais comuns (minimo Asteroid.MIN_SIZE); o maximo
-## cresce com o tempo e com o poder de fogo (numero de canhoes, ja que o
-## casco nao atira).
-func _roll_asteroid_size() -> int:
-	var cannons := 0
-	for n in player.weapon_counts().values():
-		cannons += n
-	var max_n := clampi(3 + int(elapsed / 10.0) + int(cannons * 1.5), Asteroid.MIN_SIZE, 40)
-	return Asteroid.MIN_SIZE + int(pow(randf(), 1.7) * (max_n - Asteroid.MIN_SIZE + 1))
 
 
 ## Batidas entre asteroides (cada par uma vez por frame).
@@ -269,9 +260,10 @@ func _collide_asteroids() -> void:
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
 	if not game_over:
-		score += a.max_hp
+		var points := _cfg.score_for(a.max_hp)
+		score += points
 		destroyed += 1
-		hud.popup("+%s" % UIStyle.fmt_int(a.max_hp), UIStyle.GOLD, _to_screen(a.global_position),
+		hud.popup("+%s" % UIStyle.fmt_int(points), UIStyle.GOLD, _to_screen(a.global_position),
 			clampi(14 + (a.size >> 1), 14, 24))
 		if destroyed % Weapons.ASTEROIDS_PER_COMMON == 0:
 			_grant_common_cannon()
@@ -279,13 +271,13 @@ func _destroy_asteroid(a: Asteroid) -> void:
 	a.queue_free()
 
 
-## O asteroide se parte em pedacos de PIECE_MIN..PIECE_MAX celulas conectadas,
-## no mesmo lugar em que estavam; ORE_LOSS das celulas some (vira poeira).
+## O asteroide se parte em pedacos de piece_min..piece_max celulas conectadas,
+## no mesmo lugar em que estavam; ore_loss das celulas some (vira poeira).
 func _break_into_ore(a: Asteroid) -> void:
 	var keys := a.cells.keys()
 	keys.shuffle()
-	# Arredondamento sorteado: em media perde exatamente ORE_LOSS.
-	var exact := keys.size() * (1.0 - ORE_LOSS)
+	# Arredondamento sorteado: em media perde exatamente ore_loss.
+	var exact := keys.size() * (1.0 - _cfg.ore_loss)
 	var count := int(exact) + (1 if randf() < exact - int(exact) else 0)
 	for i in range(count, keys.size()):
 		fx.burst(a.cell_global(keys[i]), a.base_color.darkened(0.2), 6, 90.0)
@@ -295,7 +287,7 @@ func _break_into_ore(a: Asteroid) -> void:
 
 	# As vezes uma das celulas e de canhao especial (mais chance em asteroides maiores).
 	var weapons := {}
-	if randf() < Weapons.special_drop_chance(a.size):
+	if randf() < _cfg.special_drop_chance(a.size):
 		weapons[kept[randi() % kept.size()]] = Weapons.roll_special()
 
 	for group in _split_into_pieces(kept):
@@ -304,7 +296,8 @@ func _break_into_ore(a: Asteroid) -> void:
 		var outward := (ore.global_position - a.global_position).normalized()
 		if outward == Vector2.ZERO:
 			outward = Vector2.from_angle(randf() * TAU)
-		ore.velocity = a.velocity + outward.rotated(randf_range(-0.4, 0.4)) * randf_range(20.0, 55.0)
+		ore.velocity = a.velocity + outward.rotated(randf_range(-0.4, 0.4)) \
+			* randf_range(_cfg.ore_speed_min, _cfg.ore_speed_max)
 		ore.angular_velocity = randf_range(-1.0, 1.0)
 		_add_ore(ore)
 	for h in kept:
@@ -312,7 +305,7 @@ func _break_into_ore(a: Asteroid) -> void:
 	_trim_ores()
 
 
-## Divide celulas em grupos conectados de PIECE_MIN..PIECE_MAX celulas.
+## Divide celulas em grupos conectados de piece_min..piece_max celulas.
 ## Comeca e cresce pelas celulas com menos vizinhos livres (as que ficariam
 ## isoladas) e, no fim, cola as sobras de 1 celula num pedaco vizinho.
 func _split_into_pieces(keys: Array) -> Array:
@@ -325,7 +318,7 @@ func _split_into_pieces(keys: Array) -> Array:
 		var start := _most_isolated(left.keys(), left)
 		left.erase(start)
 		var piece: Array[Vector2i] = [start]
-		var target := randi_range(PIECE_MIN, PIECE_MAX)
+		var target := randi_range(_cfg.piece_min, maxi(_cfg.piece_min, _cfg.piece_max))
 		while piece.size() < target:
 			var options: Array[Vector2i] = []
 			for h in piece:
@@ -341,7 +334,7 @@ func _split_into_pieces(keys: Array) -> Array:
 			piece_of[h] = pieces.size()
 		pieces.append(piece)
 
-	# Sobras de 1 celula entram num pedaco vizinho (ele pode passar de PIECE_MAX).
+	# Sobras de 1 celula entram num pedaco vizinho (ele pode passar de piece_max).
 	for i in pieces.size():
 		if pieces[i].size() != 1:
 			continue
@@ -381,14 +374,14 @@ func _add_ore(ore: Ore) -> void:
 ## Limita os minerios soltos: remove os mais antigos, preferindo os sem
 ## canhao. O pedaco que esta sendo arrastado nunca sai.
 func _trim_ores() -> void:
-	while ores.size() > MAX_ORES:
+	while ores.size() > _cfg.max_ores:
 		var loose := ores.filter(func(o): return not o.dragged)
 		var plain := loose.filter(func(o): return not o.has_special())
 		_remove_ore(plain[0] if not plain.is_empty() else loose[0])
 
 
 ## Contato celula a celula: cada celula de asteroide que encosta na nave
-## destroi a celula da nave que ela tocou; depois de CELL_CHARGES destruicoes
+## destroi a celula da nave que ela tocou; depois de cell_charges destruicoes
 ## ela some. Partes da nave que se soltarem do nucleo viram pedacos soltos.
 func _check_player_collisions() -> void:
 	var hits := PackedVector2Array()
@@ -412,13 +405,13 @@ func _check_player_collisions() -> void:
 			for h in spent:
 				fx.burst(a.cell_global(h), a.base_color, 5, 110.0)
 			for piece in a.remove_cells(spent):
-				if piece.size < Asteroid.MIN_SIZE:
+				if piece.size < _cfg.min_size:
 					_crumble(piece)
 					piece.free()
 				else:
 					add_child(piece)
 					asteroids.append(piece)
-			if a.cells.size() < Asteroid.MIN_SIZE:
+			if a.cells.size() < _cfg.min_size:
 				_crumble(a)
 				asteroids.erase(a)
 				a.queue_free()
@@ -441,7 +434,7 @@ func _check_player_collisions() -> void:
 		_detach_from_ship(piece)
 
 
-## Asteroide pequeno demais (menos de MIN_SIZE celulas) vira poeira.
+## Asteroide pequeno demais (menos de min_size celulas) vira poeira.
 func _crumble(a: Asteroid) -> void:
 	for h in a.cells:
 		fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 6, 90.0)
@@ -496,7 +489,7 @@ func _remove_ore(ore: Ore) -> void:
 
 
 func _despawn_far_objects() -> void:
-	var limit := _view_radius() * DESPAWN_FACTOR
+	var limit := _view_radius() * _cfg.despawn_factor
 	for a in asteroids.duplicate():
 		if a.global_position.distance_to(camera.global_position) > limit + a.bound_radius:
 			asteroids.erase(a)

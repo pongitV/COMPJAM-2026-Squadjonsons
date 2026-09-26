@@ -36,7 +36,8 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | `scripts/hex_body.gd` | Base de todo objeto feito de células: desenho e colisão |
 | `scripts/player.gd` | Movimento, giro, canhões por célula (mira automática), encaixe de pedaços e dano |
 | `scripts/weapons.gd` | Tipos de canhão: cores, recarga e números de balanceamento |
-| `scripts/asteroid.gd` | Geração aleatória e HP |
+| `scripts/asteroid.gd` | Geração aleatória, HP, dano na nave e batidas entre asteroides |
+| `scripts/asteroid_config.gd`, `config/asteroids.tres` | Todos os parâmetros dos asteroides (spawn, tamanho, HP, velocidade, minério), editáveis no Inspector |
 | `scripts/ore.gd` | Pedaço de minério solto (flutua até ser arrastado) |
 | `scripts/tractor.gd` | Raio trator: pegar, arrastar, girar e encaixar pedaços no grid da nave |
 | `scripts/bullets.gd` | Projéteis do canhão comum e da shotgun, em arrays compactos |
@@ -69,7 +70,19 @@ Toda a UI desenhada em código é placeholder. Para trocar uma peça pela sua ar
 
 A margem do 9-slice é 12 px (muda por slot em `UISkin.SLICE`). Tamanhos de referência em `art/ui/LEIA-ME.txt`. Para um novo elemento de UI trocável, adicione o slot em `UISkin.SLOTS` e estenda `UISprite` (ou use `UISkin.stylebox()` / `UISkin.replace()`).
 
-Os parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: dano, recarga e alcance dos canhões em `weapons.gd`, `ORE_LOSS` e `PIECE_MIN`/`PIECE_MAX` em `game.gd`, `CELL_CHARGES`, `MIN_SIZE` e `BOUNCE` em `asteroid.gd`, `SIZE` em `hex.gd`).
+## Parâmetros dos asteroides
+Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite no Inspector (os valores padrão e a explicação de cada um estão em `scripts/asteroid_config.gd`). Para ter presets (fácil, difícil…), duplique o `.tres` e arraste o novo no campo **Asteroid Config** do nó `Game` em `game.tscn`.
+
+| Grupo | Parâmetros |
+|---|---|
+| Spawn | atraso do primeiro, intervalo inicial/mínimo, quanto acelera por segundo, variação aleatória, **máximo de asteroides vivos**, distância de spawn/despawn, desvio da mira em direção à nave |
+| Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
+| Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
+| Movimento | faixa de velocidade, multiplicador para pequenos/grandes, giro inicial e máximo, elasticidade das batidas, velocidade ao se partir |
+| Dano na nave | quantas células da nave cada célula do asteroide destrói |
+| Minério | fração perdida, tamanho e velocidade dos pedaços, máximo na tela, chance de canhão especial |
+
+Os demais parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: dano, recarga e alcance dos canhões em `weapons.gd`, `SIZE` em `hex.gd`).
 
 ## Créditos
 - Fonte [Hexagon](https://fontstruct.com/fontstructions/show/1727445) por "twannieboy", sob a licença Creative Commons BY-NC-SA 3.0 (uso não comercial). Licença e leia-me em `fonts/Hexagon-*.txt`. Ela só tem letras sem acento, então os textos do jogo aparecem sem acentos.
