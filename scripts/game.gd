@@ -14,6 +14,8 @@ const SAVE_PATH := "user://save.cfg"
 
 var player: Player
 var bullets: Bullets
+var missiles: Missiles
+var lasers: Lasers
 var fx: Fx
 var camera: Camera2D
 var starfield: Starfield
@@ -49,9 +51,17 @@ func _ready() -> void:
 	player.core_destroyed.connect(_on_core_destroyed)
 	add_child(player)
 
+	lasers = Lasers.new()
+	lasers.z_index = 1
+	add_child(lasers)
+
 	bullets = Bullets.new()
 	bullets.z_index = 3
 	add_child(bullets)
+
+	missiles = Missiles.new()
+	missiles.z_index = 3
+	add_child(missiles)
 
 	fx = Fx.new()
 	fx.z_index = 4
@@ -77,14 +87,18 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not game_over:
 		elapsed += delta
+		player.aim = get_global_mouse_position()
 		player.step(delta)
 		if Input.is_action_pressed("fire"):
-			for shot in player.fire(get_global_mouse_position()):
-				bullets.spawn(shot[0], shot[1], player.velocity)
+			for shot in player.fire():
+				_fire_shot(shot)
 
 	for a in asteroids:
 		a.step(delta)
 	bullets.step(delta, asteroids)
+	lasers.step(delta, player, asteroids, fx)
+	if not missiles.step(delta, asteroids, fx).is_empty():
+		_shake = maxf(_shake, 7.0)
 	for a in asteroids.duplicate():
 		if a.hp <= 0:
 			_destroy_asteroid(a, true)
@@ -108,6 +122,35 @@ func _unhandled_input(event: InputEvent) -> void:
 func _restart() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+
+# --- Canhões ----------------------------------------------------------------
+
+## shot: {type, cell, origin, dir} vindo de Player.fire().
+func _fire_shot(shot: Dictionary) -> void:
+	var origin: Vector2 = shot.origin
+	var dir: Vector2 = shot.dir
+	var color := Weapons.color(shot.type).lightened(0.4)
+	match shot.type:
+		Weapons.COMMON:
+			bullets.spawn(origin, dir * Weapons.BULLET_SPEED + player.velocity, Weapons.BULLET_LIFE, color)
+		Weapons.SHOTGUN:
+			for i in Weapons.PELLETS:
+				var t := float(i) / (Weapons.PELLETS - 1) - 0.5
+				var pellet_dir := dir.rotated(t * Weapons.PELLET_SPREAD + randf_range(-0.05, 0.05))
+				var speed := Weapons.PELLET_SPEED * randf_range(0.9, 1.1)
+				bullets.spawn(origin, pellet_dir * speed + player.velocity, Weapons.PELLET_LIFE, color)
+		Weapons.LASER:
+			lasers.start(shot.cell)
+		Weapons.BOMB:
+			missiles.launch(origin, player.aim, player.velocity)
+
+
+func _grant_common_cannon() -> void:
+	var h := player.add_common_cannon()
+	var at := player.cell_global(h)
+	fx.burst(at, Weapons.color(Weapons.COMMON), 14, 120.0)
+	hud.popup("+CANHÃO", Weapons.color(Weapons.COMMON), _to_screen(at + Vector2(0, -20)), 14)
 
 
 # --- Asteroides -------------------------------------------------------------
@@ -138,9 +181,13 @@ func _spawn_asteroids(delta: float) -> void:
 	asteroids.append(a)
 
 
-## Tamanhos pequenos são mais comuns; o máximo cresce com o tempo e com a nave.
+## Tamanhos pequenos são mais comuns; o máximo cresce com o tempo e com o
+## poder de fogo (número de canhões, já que o casco não atira).
 func _roll_asteroid_size() -> int:
-	var max_n := clampi(3 + int(elapsed / 10.0) + int(player.cells.size() / 3.0), 3, 40)
+	var cannons := 0
+	for n in player.weapon_counts().values():
+		cannons += n
+	var max_n := clampi(3 + int(elapsed / 10.0) + int(cannons * 1.5), 3, 40)
 	return 1 + int(pow(randf(), 1.7) * max_n)
 
 
@@ -153,11 +200,15 @@ func _destroy_asteroid(a: Asteroid, drop_ore: bool) -> void:
 		destroyed += 1
 		hud.popup("+%s" % UIStyle.fmt_int(a.max_hp), UIStyle.GOLD, _to_screen(a.global_position),
 			clampi(14 + (a.size >> 1), 14, 24))
+		if destroyed % Weapons.ASTEROIDS_PER_COMMON == 0:
+			_grant_common_cannon()
 		var keys := a.cells.keys()
 		var count := maxi(1, roundi(a.size * ORE_PER_CELL))
+		# Às vezes um dos minérios é de canhão especial (mais chance em asteroides maiores).
+		var special := Weapons.roll_special() if randf() < Weapons.special_drop_chance(a.size) else Weapons.NONE
 		for i in count:
 			var origin := a.cell_global(keys[i % keys.size()])
-			var ore := Ore.new()
+			var ore := Ore.new(special if i == 0 else Weapons.NONE)
 			ore.position = origin + Vector2(randf_range(-4, 4), randf_range(-4, 4))
 			var outward := (origin - a.global_position).normalized()
 			if outward == Vector2.ZERO:
@@ -176,7 +227,7 @@ func _check_player_collisions() -> void:
 			continue
 		var lost := player.take_damage(a.size)
 		for p in lost:
-			fx.burst(p, Player.CELL_COLOR, 5, 160.0)
+			fx.burst(p, Weapons.color(Weapons.NONE).lightened(0.3), 5, 160.0)
 		hud.popup("-%d" % lost.size(), UIStyle.RED,
 			_to_screen(player.global_position + Vector2(0, -player.bound_radius - 8.0)), 22)
 		hud.damage_flash(a.size / 10.0)
@@ -194,11 +245,16 @@ func _update_ores(delta: float) -> void:
 		if ore.life <= 0.0:
 			_remove_ore(ore)
 		elif not game_over and player.touches(ore):
-			player.absorb_at(ore.global_position)
+			player.absorb_at(ore.global_position, ore.weapon)
 			collected += 1
 			max_cells = maxi(max_cells, player.cells.size())
-			fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
-			hud.popup("+1", UIStyle.GREEN, _to_screen(ore.global_position), 13)
+			var screen_pos := _to_screen(ore.global_position)
+			if ore.weapon == Weapons.NONE:
+				fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
+				hud.popup("+1", UIStyle.GREEN, screen_pos, 13)
+			else:
+				fx.burst(ore.global_position, Weapons.color(ore.weapon), 16, 140.0)
+				hud.popup("+%s" % Weapons.NAMES[ore.weapon], Weapons.color(ore.weapon), screen_pos, 15)
 			_remove_ore(ore)
 
 
@@ -245,6 +301,8 @@ func _update_hud() -> void:
 	hud.cells_card.set_value(player.cells.size())
 	hud.cells_card.set_sub("COLETADOS %s" % UIStyle.fmt_int(collected))
 	hud.time_card.set_text(UIStyle.fmt_time(elapsed))
+	hud.cannon_card.set_counts(player.weapon_counts())
+	hud.cannon_card.set_progress(destroyed % Weapons.ASTEROIDS_PER_COMMON)
 
 
 func _on_core_destroyed() -> void:

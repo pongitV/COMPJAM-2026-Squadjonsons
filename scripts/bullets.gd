@@ -1,26 +1,25 @@
 class_name Bullets
 extends Node2D
-## Todos os projéteis ficam em arrays compactos e são desenhados numa
-## única chamada — naves grandes disparam centenas por rajada.
+## Projéteis simples (canhão comum e shotgun). Ficam em arrays compactos e
+## são desenhados numa única chamada: naves grandes disparam muitos por vez.
 
-const SPEED := 650.0
-const LIFE := 1.1
 const RADIUS := 2.5
 const MAX_BULLETS := 4000
 const HIT_DIST := Hex.SIZE * 0.87 + RADIUS
-const COLOR := Color(1.0, 0.95, 0.6)
 
 var _pos := PackedVector2Array()
 var _vel := PackedVector2Array()
 var _life := PackedFloat32Array()
+var _color := PackedColorArray()
 
 
-func spawn(origin: Vector2, dir: Vector2, inherited_velocity: Vector2) -> void:
+func spawn(origin: Vector2, velocity: Vector2, life: float, color: Color) -> void:
 	if _pos.size() >= MAX_BULLETS:
 		return
 	_pos.append(origin)
-	_vel.append(dir * SPEED + inherited_velocity)
-	_life.append(LIFE)
+	_vel.append(velocity)
+	_life.append(life)
+	_color.append(color)
 
 
 ## Move os projéteis e aplica acertos nos asteroides.
@@ -45,9 +44,11 @@ func step(delta: float, asteroids: Array[Asteroid]) -> void:
 			_pos[i] = _pos[last]
 			_vel[i] = _vel[last]
 			_life[i] = _life[last]
+			_color[i] = _color[last]
 			_pos.resize(last)
 			_vel.resize(last)
 			_life.resize(last)
+			_color.resize(last)
 		else:
 			i += 1
 	queue_redraw()
@@ -60,4 +61,4 @@ func _draw() -> void:
 	for i in _pos.size():
 		segments.append(_pos[i] - _vel[i].normalized() * 7.0)
 		segments.append(_pos[i])
-	draw_multiline(segments, COLOR, 2.5)
+	draw_multiline_colors(segments, _color, 2.5)

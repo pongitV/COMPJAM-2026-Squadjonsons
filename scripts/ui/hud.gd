@@ -9,6 +9,7 @@ signal quit_requested
 var score_card: StatCard
 var cells_card: StatCard
 var time_card: StatCard
+var cannon_card: CannonCard
 
 var _root: Control
 var _popups: Control
@@ -49,12 +50,13 @@ func _ready() -> void:
 	bar.add_child(row)
 	score_card = StatCard.new("PONTOS", UIStyle.GOLD)
 	cells_card = StatCard.new("HEXÁGONOS", UIStyle.CYAN)
+	cannon_card = CannonCard.new()
 	time_card = StatCard.new("TEMPO", UIStyle.TEXT_DIM)
 	time_card.icon.spin_speed = 1.2
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for c in [score_card, cells_card, spacer, time_card]:
+	for c in [score_card, cells_card, cannon_card, spacer, time_card]:
 		row.add_child(c)
 
 	_hint = UIStyle.label("ESC  pausar / info", 11, Color(UIStyle.TEXT_DIM, 0.6), UIStyle.CAPTION)

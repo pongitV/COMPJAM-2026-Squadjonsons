@@ -8,6 +8,7 @@ var size := 1
 var max_hp := 1
 var hp := 1
 var base_color := Color.GRAY
+var _damage_accum := 0.0
 
 
 func setup(n: int) -> void:
@@ -42,10 +43,20 @@ func step(delta: float) -> void:
 
 ## Recebe um disparo. Retorna true se foi destruído.
 func hit() -> bool:
-	hp -= 1
+	apply_damage(1.0)
+	return hp <= 0
+
+
+## Dano em unidades de "disparo". Aceita frações (dano contínuo do laser).
+func apply_damage(amount: float) -> void:
+	_damage_accum += amount
+	var whole := int(_damage_accum)
+	if whole <= 0:
+		return
+	_damage_accum -= whole
+	hp -= whole
 	flash = 1.0
 	queue_redraw()
-	return hp <= 0
 
 
 func cell_color(_h: Vector2i) -> Color:

@@ -157,13 +157,26 @@ func _build_main() -> Control:
 func _build_info() -> Control:
 	var parts := _make_panel(UIStyle.GREEN)
 	var col: VBoxContainer = parts[1]
-	_title(col, "INFO", "CONTROLES", UIStyle.GREEN)
+	_title(col, "INFO", "MANUAL", UIStyle.GREEN)
 
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 24)
+	col.add_child(columns)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 10)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	columns.add_child(left)
+	columns.add_child(VSeparator.new())
+	columns.add_child(right)
+
+	# Coluna esquerda: controles e regras gerais.
+	left.add_child(UIStyle.label("CONTROLES", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 20)
+	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 8)
-	col.add_child(grid)
+	left.add_child(grid)
 	var controls := [
 		[["W", "A", "S", "D"], "Mover"],
 		[["UP", "LEFT", "DOWN", "RIGHT"], "Mover (alternativo)"],
@@ -181,25 +194,20 @@ func _build_info() -> Control:
 		action.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		grid.add_child(action)
 
-	col.add_child(HSeparator.new())
-	col.add_child(UIStyle.label("COMO JOGAR", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	var rules := [
-		[UIStyle.GOLD, "O hexágono dourado é o seu núcleo. Se ele for destruído, é fim de jogo."],
-		[UIStyle.CYAN, "Cada hexágono da nave atira em direção à mira."],
-		[Color(0.7, 0.6, 0.5), "Um asteroide de N hexágonos aguenta N^1,5 tiros. Se bater na nave, destrói N hexágonos seus."],
-		[UIStyle.GREEN, "Asteroides destruídos soltam minério. Encoste nele para ganhar hexágonos."],
-	]
-	for r in rules:
-		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation", 10)
-		var icon := HexIcon.new(r[0], 14)
-		icon.spin_speed = 0.0
-		line.add_child(icon)
-		var text := UIStyle.label(r[1], 16, UIStyle.TEXT)
-		text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text.custom_minimum_size.x = 400
-		line.add_child(text)
-		col.add_child(line)
+	left.add_child(HSeparator.new())
+	left.add_child(UIStyle.label("COMO JOGAR", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
+	_rule(left, UIStyle.GOLD, "", "O hexágono dourado é o seu núcleo. Se ele for destruído, é fim de jogo.")
+	_rule(left, Color(0.7, 0.6, 0.5), "", "Um asteroide de N hexágonos aguenta N^1,5 de dano. Se bater na nave, destrói N hexágonos seus.")
+	_rule(left, UIStyle.GREEN, "", "Asteroides destruídos soltam minério. O verde vira casco; o colorido vira um canhão daquela cor.")
+
+	# Coluna direita: canhões.
+	right.add_child(UIStyle.label("CANHÕES", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
+	_rule(right, Weapons.color(Weapons.COMMON), "COMUM",
+		"Tiro único na mira. Você ganha 1 a cada %d asteroides destruídos. Fica sempre na borda da nave." % Weapons.ASTEROIDS_PER_COMMON)
+	_rule(right, Weapons.color(Weapons.SHOTGUN), "SHOTGUN", "6 tiros em leque, de alcance curto.")
+	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Raio para fora da nave, com dano contínuo por 3 segundos.")
+	_rule(right, Weapons.color(Weapons.BOMB), "BOMBA", "Míssil lento que explode na mira ou ao tocar um asteroide, com dano em área.")
+	_rule(right, Weapons.color(Weapons.NONE), "CASCO", "Hexágono sem canhão. Não atira, mas protege o núcleo.")
 
 	_info_back_button = UIStyle.button("VOLTAR")
 	_info_back_button.pressed.connect(_show_main)
@@ -207,3 +215,23 @@ func _build_info() -> Control:
 	col.add_child(HSeparator.new())
 	col.add_child(_info_back_button)
 	return parts[0]
+
+
+## Linha do manual: hexágono colorido + título opcional + descrição.
+func _rule(parent: VBoxContainer, color: Color, title: String, text: String) -> void:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	var icon := HexIcon.new(color, 16)
+	icon.spin_speed = 0.0
+	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	line.add_child(icon)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 0)
+	if title != "":
+		body.add_child(UIStyle.label(title, 12, color, UIStyle.DISPLAY))
+	var desc := UIStyle.label(text, 16, UIStyle.TEXT)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size.x = 340
+	body.add_child(desc)
+	line.add_child(body)
+	parent.add_child(line)

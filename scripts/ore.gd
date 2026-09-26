@@ -1,16 +1,24 @@
 class_name Ore
 extends HexBody
-## Célula solta de minério. Ao tocar o jogador vira uma célula do jogador.
+## Célula solta de minério. Ao tocar o jogador vira uma célula do jogador:
+## minério verde vira casco; minério colorido vira um canhão daquele tipo.
 
 const COLOR := Color(0.35, 1.0, 0.55)
 const LIFETIME := 25.0
+const SPECIAL_LIFETIME := 35.0
 const MAGNET_RANGE := 70.0
 const MAGNET_ACCEL := 500.0
 
+## Weapons.NONE para minério comum.
+var weapon := Weapons.NONE
 var life := LIFETIME
+var _pulse := randf() * TAU
 
 
-func _init() -> void:
+func _init(weapon_type: int = Weapons.NONE) -> void:
+	weapon = weapon_type
+	if weapon != Weapons.NONE:
+		life = SPECIAL_LIFETIME
 	cells[Vector2i.ZERO] = true
 	recompute_bounds()
 
@@ -27,11 +35,25 @@ func step(delta: float, player: Player) -> void:
 	life -= delta
 	# Pisca nos últimos segundos antes de sumir.
 	visible = life > 5.0 or fmod(life, 0.3) > 0.12
+	if weapon != Weapons.NONE:
+		_pulse += delta * 5.0
+		queue_redraw()
 
 
 func cell_color(_h: Vector2i) -> Color:
-	return COLOR
+	return COLOR if weapon == Weapons.NONE else Weapons.color(weapon)
 
 
 func outline_color(_h: Vector2i) -> Color:
-	return Color(0.85, 1.0, 0.9, 0.9)
+	return Color(0.85, 1.0, 0.9, 0.9) if weapon == Weapons.NONE else Color.WHITE
+
+
+func _draw() -> void:
+	if weapon != Weapons.NONE:
+		# Brilho pulsante para destacar o minério de canhão.
+		var glow := Weapons.color(weapon)
+		glow.a = 0.25 + 0.15 * sin(_pulse)
+		draw_circle(Vector2.ZERO, Hex.SIZE * (1.5 + 0.15 * sin(_pulse)), glow)
+	super._draw()
+	if weapon != Weapons.NONE:
+		draw_circle(Vector2.ZERO, Hex.SIZE * 0.3, Color.WHITE)
