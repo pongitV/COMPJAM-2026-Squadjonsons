@@ -23,6 +23,12 @@ const TURN_RESPONSE := 3.0
 ## Azul dos detalhes da arte do nucleo (seta de giro, explosao, titulo).
 const CORE_COLOR := Color("#3a7bff")
 const HURT_COLOR := Color(1.0, 0.25, 0.2)
+## Pisca-pisca do nucleo, para ele ficar sempre evidente: amarelo forte,
+## piscadas por segundo e opacidade minima/maxima do preenchimento.
+const CORE_BLINK_COLOR := Color(1.0, 0.92, 0.0)
+const CORE_BLINK_RATE := 2.0
+const CORE_BLINK_MIN := 0.1
+const CORE_BLINK_MAX := 0.9
 
 ## Alvos sao recalculados a esta frequencia (nao precisa ser todo frame).
 const RETARGET_INTERVAL := 0.1
@@ -311,8 +317,32 @@ func cell_art(h: Vector2i) -> int:
 func _draw() -> void:
 	super._draw()
 	_draw_cannons()
+	if alive and cells.has(CORE):
+		_draw_core_blink()
 	if turning and alive:
 		_draw_heading()
+
+
+## Nucleo piscando em amarelo forte, por cima de tudo (arte e cano): no pico
+## ele fica quase todo amarelo; no vale a arte aparece, com o contorno sempre
+## aceso. Um anel de brilho se expande a cada piscada.
+func _draw_core_blink() -> void:
+	var t := Time.get_ticks_msec() / 1000.0 * CORE_BLINK_RATE
+	# 0..1, com a subida rapida e a descida mais lenta (cara de alerta).
+	var k := pow(0.5 + 0.5 * cos(TAU * t), 2.0)
+	var c := cell_local(CORE)
+	var hex := PackedVector2Array()
+	for corner in Hex.corners():
+		hex.append(c + corner)
+	draw_colored_polygon(hex, Color(CORE_BLINK_COLOR, lerpf(CORE_BLINK_MIN, CORE_BLINK_MAX, k)))
+	var outline := hex.duplicate()
+	outline.append(hex[0])
+	draw_polyline(outline, CORE_BLINK_COLOR.lerp(Color.WHITE, 0.4 * k), 3.0, true)
+	# Anel: nasce no contorno no pico e se afasta sumindo.
+	var ring := PackedVector2Array()
+	for p in outline:
+		ring.append(c + (p - c) * (1.1 + 0.6 * (1.0 - k)))
+	draw_polyline(ring, Color(CORE_BLINK_COLOR, 0.9 * k), 2.5, true)
 
 
 ## Seta na frente da nave (eixo +X local) enquanto ela gira.

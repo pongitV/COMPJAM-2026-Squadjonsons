@@ -43,6 +43,10 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var streak_alpha := 0.16
 
 @export_group("Fluxo")
+## Multiplicador global da frequencia de spawn, de asteroides e de inimigos
+## (1 = normal, 2 = o dobro, 0.5 = a metade). Vale por cima dos intervalos
+## de AsteroidConfig e EnemyConfig; nao muda o maximo de vivos na tela.
+@export_range(0.1, 5.0, 0.05) var spawn_rate := 1.0
 ## Arrasto lento dos asteroides no sentido contrario ao avanco: somado a
 ## velocidade de cada um que nasce, faz eles "passarem" pela nave.
 @export_range(0.0, 500.0, 1.0, "suffix:px/s") var asteroid_drift := 45.0
@@ -61,8 +65,7 @@ extends Resource
 
 @export_group("Chegada")
 ## Tempo ate a bandeira de chegada (a barra no rodape enche nesse tempo): ai
-## entra o chefe. As rampas de dificuldade (AsteroidConfig, EnemyConfig)
-## estao ajustadas para 3 min; se mudar muito este valor, ajuste-as tambem.
+## entra o chefe.
 @export_range(10.0, 3600.0, 5.0, "suffix:s") var race_duration := 180.0
 
 

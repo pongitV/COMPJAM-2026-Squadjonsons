@@ -29,12 +29,9 @@ O preset **Windows Desktop** (`export_presets.cfg`) exporta para `build/HexCore.
 | Tempo | Máx. ao mesmo tempo / intervalo | Inimigos que podem aparecer |
 |---|---|---|
 | 0:00 | 3 / 5 s | 1 a 3 canhões comuns |
-| 0:45 | 3 / 5 s | + 1 a 2 shotguns |
-| 1:00 | 4 / 4 s | idem |
-| 1:30 | 4 / 4 s | + 1 bomba |
-| 2:00 | 5 / 3,5 s | idem |
-| 2:15 | 5 / 3,5 s | + mistos (até 3 canhões, podendo ter 1 laser) |
-| 3:00 | — | chega o MEGATRON |
+| 1:00 | 4 / 4 s | + 1 a 2 shotguns |
+| 2:00 | 5 / 3,5 s | + 1 bomba |
+| 3:00 | — | chega o MEGATRON (os mistos, liberados no minuto 3, só aparecem se a corrida for mais longa) |
 
 - **MEGATRON (chefe)**: na bandeira de chegada (3 min) os asteroides e inimigos param de vir e o MEGATRON entra pela direita: enorme e alto, de casco branco e núcleo como os da nave, com o laser gigante na frente, bombas no meio, canhões comuns no meio-termo e shotguns nas pontas. Ele sobe e desce; antes do laser gigante para, mostra uma faixa de aviso por 3 s e dispara por 5 s reto para a esquerda, cortando a tela. A luta tem 3 fases: primeiro as **torretas** (fáceis de destruir; o laser e o núcleo ficam com escudo), depois o **laser gigante** e por fim o **núcleo**. O casco quebra como o da nave: partes que perdem a ligação com o núcleo se soltam como pedaços que dá para pegar. Destruir o núcleo **vence o jogo** (tela de vitória).
 - **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços soltos (e os canhões derrubados pelos inimigos) quicam nos asteroides (com massa bem menor que eles), mas passam por cima da nave sem bater, e são arrastados devagar para a esquerda, saindo da tela se ninguém pegar. Eles não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Um **clique rápido** num pedaço dentro do alcance puxa ele sozinho até a nave, e ele encaixa no primeiro lugar em que couber. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
@@ -123,14 +120,16 @@ O Godot grava no `.tres` só os valores diferentes do padrão do código; o Insp
 | Tempo | Asteroide a cada | Multiplicador (HP e velocidade, 0.2/min) | Tamanho máx. (sem canhões) |
 |---|---|---|---|
 | 0:00 | ~1,3 s | 1,0x | 3 |
-| 1:00 | ~0,86 s | 1,2x | 13 |
-| 1:30 | ~0,69 s | 1,3x | 18 |
-| 2:00 | ~0,57 s (mínimo) | 1,4x | 23 |
-| 3:00 | chefe | 1,6x | 33 |
+| 1:00 | ~0,86 s | 1,2x | 10 |
+| 1:30 | ~0,69 s | 1,3x | 14 |
+| 2:00 | ~0,57 s (mínimo) | 1,4x | 18 |
+| 3:00 | chefe | 1,6x | 25 |
+
+Para mudar a quantidade de spawns de tudo de uma vez, use `spawn_rate` em `config/travel.tres` (grupo Fluxo): multiplica a frequência de asteroides e inimigos (2 = o dobro, 0.5 = a metade).
 
 | Grupo | Parâmetros |
 |---|---|
-| Dificuldade com o tempo | multiplicador que começa em 1 e sobe X por minuto (padrão do código +50%/min, até 2x; o `asteroids.tres` usa +20%/min); escolha se ele aumenta HP, velocidade e/ou frequência de spawn |
+| Dificuldade com o tempo | multiplicador que começa em 1 e sobe X por minuto (padrão do código +30%/min, até 2x; o `asteroids.tres` usa +20%/min); escolha se ele aumenta HP, velocidade e/ou frequência de spawn |
 | Spawn | atraso do primeiro, intervalo inicial/mínimo, quanto acelera por segundo, variação aleatória, multiplicador final da frequência (`spawn_rate`, padrão 0.7 = 30% menos asteroides), **máximo de asteroides vivos**, distância de spawn/despawn, desvio da mira em direção à nave |
 | Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
 | Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
@@ -145,7 +144,7 @@ A câmera fica parada e só o fundo rola, dando a impressão de que a nave avan�
 |---|---|
 | Fundo | velocidade inicial, aumento por minuto e máxima, direção do avanço, parallax das estrelas distantes/próximas, quantidade de estrelas, rastro das estrelas, linhas de velocidade (quantidade, opacidade, velocidade) |
 | Efeitos de velocidade | riscos atrás da nave e dos asteroides (quantidade, comprimento, opacidade), partículas de rastro da nave por segundo |
-| Fluxo | arrasto dos asteroides e dos minérios soltos para trás (padrão 45 px/s cada), chance de nascerem à frente (70%) e abertura desse arco (120°), abertura total onde podem nascer (`spawn_side_arc`, 180° = só da metade da tela para a frente) |
+| Fluxo | **`spawn_rate` global** (frequência de spawn de asteroides e inimigos, padrão 1), arrasto dos asteroides e dos minérios soltos para trás (padrão 45 px/s cada), chance de nascerem à frente (70%) e abertura desse arco (120°), abertura total onde podem nascer (`spawn_side_arc`, 180° = só da metade da tela para a frente) |
 | Chegada | tempo até a bandeira, quando entra o chefe (padrão 180 s; as rampas de dificuldade estão ajustadas para ele) |
 
 ## Parâmetros dos canhões

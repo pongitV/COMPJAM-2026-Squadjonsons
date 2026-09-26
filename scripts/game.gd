@@ -343,8 +343,8 @@ func _spawn_asteroids(delta: float) -> void:
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or asteroids.size() >= _cfg.max_asteroids:
 		return
-	# O intervalo diminui com o tempo de jogo.
-	_spawn_timer = _cfg.spawn_interval(elapsed)
+	# O intervalo diminui com o tempo de jogo (e divide pelo multiplicador global).
+	_spawn_timer = _cfg.spawn_interval(elapsed) / travel_config.spawn_rate
 
 	# O tamanho maximo cresce com o tempo e com o poder de fogo (celulas de
 	# canhao, ja que o casco nao atira).
@@ -388,7 +388,7 @@ func _spawn_enemies(delta: float) -> void:
 		# No limite: tenta de novo daqui a pouco (quando algum morrer).
 		_enemy_timer = 1.0
 		return
-	_enemy_timer = enemy_config.interval(elapsed)
+	_enemy_timer = enemy_config.interval(elapsed) / travel_config.spawn_rate
 	var armament := enemy_config.roll_wave_armament(elapsed)
 	var a := Asteroid.new()
 	a.setup(enemy_config.enemy_size(armament), _cfg.hp_scale(elapsed), armament)

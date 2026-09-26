@@ -7,11 +7,11 @@ extends Resource
 
 @export_group("Dificuldade com o tempo")
 ## Multiplicador de dificuldade: comeca em 1 e sobe tanto por minuto de
-## partida (0.5 = +50% por minuto; 0 = desligado). Ele multiplica o que
+## partida (0.3 = +30% por minuto; 0 = desligado). Ele multiplica o que
 ## estiver marcado abaixo, somado as rampas proprias de spawn e tamanho.
-## (O relogio so comeca depois do tutorial; o chefe entra aos 3 min.)
-@export_range(0.0, 2.0, 0.01, "suffix:/min") var difficulty_per_minute := 0.5
-## Teto do multiplicador (2 = no maximo 2x; com 0.5/min chega nele em 2:00).
+## (O relogio so comeca depois do tutorial.)
+@export_range(0.0, 2.0, 0.01, "suffix:/min") var difficulty_per_minute := 0.3
+## Teto do multiplicador (2 = no maximo 2x; com 0.3/min chega nele em 3:20).
 @export_range(1.0, 10.0, 0.1) var difficulty_max := 2.0
 ## Asteroides nascem com mais HP (e valem mais pontos).
 @export var difficulty_scales_hp := true
@@ -29,8 +29,8 @@ extends Resource
 @export_range(0.05, 10.0, 0.05, "suffix:s") var spawn_interval_min := 0.4
 ## Quanto o intervalo diminui por segundo de jogo (0 = ritmo constante). O
 ## multiplicador de dificuldade tambem divide o intervalo. Com os padroes (e
-## spawn_rate 0.7), um asteroide a cada ~1,3 s na largada, ~0,7 s em 1 min e
-## ~0,57 s (o minimo) a partir de ~1:20.
+## spawn_rate 0.7), um asteroide a cada ~1,3 s na largada, ~0,8 s em 1 min e
+## ~0,57 s (o minimo) a partir de ~1:40.
 @export_range(0.0, 0.1, 0.001) var spawn_interval_decay := 0.003
 ## Variacao aleatoria do intervalo (0.2 = entre 80% e 120% do valor).
 @export_range(0.0, 1.0, 0.05) var spawn_interval_jitter := 0.2
@@ -55,9 +55,9 @@ extends Resource
 ## Tamanho maximo sorteado no inicio da partida.
 @export_range(1, 200, 1) var start_max_size := 3
 ## A cada tantos segundos o tamanho maximo cresce 1 celula (0 = nao cresce).
-## Com 6: maximo de 13 celulas em 1 min, 23 em 2 min e 33 na chegada do
-## chefe (fora os canhoes da nave).
-@export_range(0.0, 120.0, 0.5, "suffix:s") var seconds_per_size := 6.0
+## Com 8: maximo de 10 celulas em 1 min, 18 em 2 min, 25 em 3 min (fora os
+## canhoes da nave).
+@export_range(0.0, 120.0, 0.5, "suffix:s") var seconds_per_size := 8.0
 ## Celulas a mais no tamanho maximo por celula de canhao que a nave tem
 ## (um laser, feito de 10 comuns, conta 10).
 @export_range(0.0, 10.0, 0.1) var size_per_cannon := 1.5
