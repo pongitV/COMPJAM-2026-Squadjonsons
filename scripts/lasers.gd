@@ -4,18 +4,27 @@ extends Node2D
 ## LASER_DURATION segundos, acompanhando a nave, com dano continuo.
 
 ## Celula do jogador (Vector2i) -> segundos restantes de raio.
+
+signal laser_started
+signal laser_stopped
+
 var _beams := {}
 var _player: Player
 var _t := 0.0
 
 
 func start(cell: Vector2i) -> void:
+	var was_empty := _beams.is_empty()
 	_beams[cell] = Weapons.LASER_DURATION
+
+	if was_empty:
+		laser_started.emit()
 
 
 func step(delta: float, player: Player, asteroids: Array[Asteroid], fx: Fx) -> void:
 	_player = player
 	_t += delta
+	var had_beams := not _beams.is_empty()
 	for cell in _beams.keys():
 		_beams[cell] -= delta
 		if _beams[cell] <= 0.0 or not player.alive or player.weapon_at(cell) != Weapons.LASER:
@@ -30,7 +39,9 @@ func step(delta: float, player: Player, asteroids: Array[Asteroid], fx: Fx) -> v
 					fx.burst(Geometry2D.get_closest_point_to_segment(a.global_position, p0, p1),
 						Weapons.color(Weapons.LASER).lightened(0.4), 1, 90.0)
 	queue_redraw()
-
+	
+	if _beams.is_empty():
+		laser_stopped.emit()
 
 func _beam_hits(a: Asteroid, p0: Vector2, p1: Vector2) -> bool:
 	var reach := a.bound_radius + Weapons.LASER_WIDTH

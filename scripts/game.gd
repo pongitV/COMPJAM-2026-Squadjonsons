@@ -24,6 +24,8 @@ var tractor: Tractor
 var fx: Fx
 var camera: Camera2D
 var music: AudioStreamPlayer
+var cannon_sfx: AudioStreamPlayer
+var laser_sfx: AudioStreamPlayer
 var starfield: Starfield
 var hud: Hud
 var pause_menu: PauseMenu
@@ -54,6 +56,16 @@ func _ready() -> void:
 	music.volume_db = -20.0
 	add_child(music)
 	music.play()
+	
+	cannon_sfx = AudioStreamPlayer.new()
+	cannon_sfx.stream = preload("res://Audio/SFX/cannon_shot.wav")
+	cannon_sfx.volume_db = -25.0
+	add_child(cannon_sfx)
+	
+	laser_sfx = AudioStreamPlayer.new()
+	laser_sfx.stream = preload("res://Audio/SFX/laser_shot_final.wav")
+	laser_sfx.volume_db = -20.0
+	add_child(laser_sfx)
 
 	var bg := CanvasLayer.new()
 	bg.layer = -1
@@ -75,6 +87,9 @@ func _ready() -> void:
 	lasers = Lasers.new()
 	lasers.z_index = 1
 	add_child(lasers)
+	
+	lasers.laser_started.connect(_on_laser_started)
+	lasers.laser_stopped.connect(_on_laser_stopped)
 
 	bullets = Bullets.new()
 	bullets.z_index = 3
@@ -105,6 +120,15 @@ func _ready() -> void:
 	add_child(pause_menu)
 	_update_hud()
 
+
+func _on_laser_started() -> void:
+	if not laser_sfx.playing:
+		laser_sfx.play()
+
+
+func _on_laser_stopped() -> void:
+	if laser_sfx.playing:
+		laser_sfx.stop()
 
 func _physics_process(delta: float) -> void:
 	if not game_over:
@@ -168,6 +192,10 @@ func _fire_shot(shot: Dictionary) -> void:
 	var origin: Vector2 = shot.origin
 	var dir: Vector2 = shot.dir
 	var color := Weapons.color(shot.type).lightened(0.4)
+	
+	if shot.type == Weapons.COMMON or shot.type == Weapons.SHOTGUN:
+		cannon_sfx.play()
+	
 	match shot.type:
 		Weapons.COMMON:
 			bullets.spawn(origin, dir * Weapons.BULLET_SPEED + player.velocity, Weapons.BULLET_LIFE, color)
@@ -179,6 +207,8 @@ func _fire_shot(shot: Dictionary) -> void:
 				bullets.spawn(origin, pellet_dir * speed + player.velocity, Weapons.PELLET_LIFE, color)
 		Weapons.LASER:
 			lasers.start(shot.cell)
+			if not laser_sfx.playing:
+				laser_sfx.play()
 		Weapons.BOMB:
 			missiles.launch(origin, shot.target_pos, player.velocity)
 
