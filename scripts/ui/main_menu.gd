@@ -146,8 +146,9 @@ func _build_ui() -> void:
 	manual_layer.visible = false
 	_root.add_child(manual_layer)
 	manual_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.04, 0.75)
+	var dim_color := ColorRect.new()
+	dim_color.color = Color(0.0, 0.01, 0.04, 0.75)
+	var dim := UISkin.replace("backdrop_menu", dim_color, true)
 	manual_layer.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var center := CenterContainer.new()
@@ -174,6 +175,7 @@ func _build_main() -> Control:
 	col.add_theme_constant_override("separation", 14)
 
 	# Titulo "HexCore": "hex" em ciano e "core" no dourado do nucleo.
+	# O sprite "title_logo" substitui o texto.
 	var title := HBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
 	for part in [["HEX", UIStyle.CYAN], ["CORE", Player.CORE_COLOR]]:
@@ -183,13 +185,15 @@ func _build_main() -> Control:
 		l.add_theme_constant_override("shadow_offset_y", 0)
 		l.add_theme_constant_override("shadow_outline_size", 14)
 		title.add_child(l)
-	col.add_child(title)
+	var logo := UISkin.replace("title_logo", title)
+	logo.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_child(logo)
 
 	var spacer := Control.new()
 	spacer.custom_minimum_size.y = 24
 	col.add_child(spacer)
 
-	var record := StatCard.new("RECORDE", UIStyle.GOLD)
+	var record := StatCard.new("RECORDE", UIStyle.GOLD, "record")
 	record.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	record.set_value(SaveData.best_score())
 	col.add_child(record)

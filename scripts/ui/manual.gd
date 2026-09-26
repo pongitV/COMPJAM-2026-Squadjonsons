@@ -4,10 +4,11 @@ extends RefCounted
 ## painel chanfrado, titulo com icone e o manual (controles, regras, canhoes).
 
 
-## Painel com uma coluna dentro. Retorna [painel, coluna].
-static func make_panel(accent: Color) -> Array:
+## Painel com uma coluna dentro, com a moldura do slot (ou a padrao "panel").
+## Retorna [painel, coluna].
+static func make_panel(slot: String, accent: Color) -> Array:
 	var panel := PanelContainer.new()
-	var style := UIStyle.panel(accent, UIStyle.PANEL_BG, 16)
+	var style := UIStyle.frame([slot, "panel"], accent, UIStyle.PANEL_BG, 16)
 	style.set_content_margin_all(24)
 	panel.add_theme_stylebox_override("panel", style)
 	var col := VBoxContainer.new()
@@ -16,11 +17,11 @@ static func make_panel(accent: Color) -> Array:
 	return [panel, col]
 
 
-static func title(col: VBoxContainer, caption: String, text: String, color: Color) -> void:
+static func title(col: VBoxContainer, icon_slot: String, caption: String, text: String, color: Color) -> void:
 	var head := HBoxContainer.new()
 	head.alignment = BoxContainer.ALIGNMENT_CENTER
 	head.add_theme_constant_override("separation", 12)
-	head.add_child(HexIcon.new(color, 28))
+	head.add_child(HexIcon.new(icon_slot, color, 28))
 	var titles := VBoxContainer.new()
 	titles.add_theme_constant_override("separation", 2)
 	titles.add_child(UIStyle.label(caption, 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
@@ -43,9 +44,9 @@ static func fit(panel: Control) -> void:
 ## O manual, em tres abas (controles, como jogar, canhoes) para caber na
 ## tela. Retorna [painel, botao VOLTAR] (quem usa conecta o botao).
 static func build() -> Array:
-	var parts := make_panel(UIStyle.GREEN)
+	var parts := make_panel("panel_manual", UIStyle.GREEN)
 	var col: VBoxContainer = parts[1]
-	title(col, "INFO", "MANUAL", UIStyle.GREEN)
+	title(col, "icon_manual", "INFO", "MANUAL", UIStyle.GREEN)
 
 	var tabs := HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER

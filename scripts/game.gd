@@ -5,7 +5,7 @@ extends Node2D
 const SPAWN_MARGIN := 120.0
 ## Sao removidos quando ficam mais longe que (raio da tela * fator).
 const DESPAWN_FACTOR := 2.5
-const MAX_ASTEROIDS := 45
+const MAX_ASTEROIDS := 100
 ## Maximo de minerios soltos na tela ao mesmo tempo.
 const MAX_ORES := 150
 ## Fracao das celulas do asteroide que se perde quando ele se parte em minerio.

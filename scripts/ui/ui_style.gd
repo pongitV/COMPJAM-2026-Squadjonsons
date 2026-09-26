@@ -1,6 +1,8 @@
 class_name UIStyle
 extends RefCounted
 ## Paleta, fontes e estilos compartilhados por toda a interface.
+## Os estilos desenhados aqui sao placeholders: paineis, botoes e chips usam
+## o sprite do slot correspondente quando ele existir (ver UISkin).
 ## Cantos chanfrados (corner_detail = 1) ecoam o formato dos hexagonos.
 
 const CYAN := Color(0.3, 0.8, 1.0)
@@ -97,6 +99,12 @@ static func panel(accent: Color = CYAN, bg: Color = PANEL_BG, cut: int = 10) -> 
 	return s
 
 
+## Moldura de painel: sprite do slot (ou do primeiro de uma lista de slots)
+## ou, sem sprite, o panel() chanfrado na cor de destaque.
+static func frame(slots: Variant, accent: Color = CYAN, bg: Color = PANEL_BG, cut: int = 10) -> StyleBox:
+	return UISkin.stylebox(slots, panel(accent, bg, cut))
+
+
 static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY) -> Label:
 	var l := Label.new()
 	l.text = plain(text)
@@ -126,7 +134,7 @@ static func key_chip(text: String) -> PanelContainer:
 	s.content_margin_right = 8
 	s.content_margin_top = 4
 	s.content_margin_bottom = 5
-	chip.add_theme_stylebox_override("panel", s)
+	chip.add_theme_stylebox_override("panel", UISkin.stylebox("key", s))
 	if text in ARROWS:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
 	else:
@@ -139,21 +147,20 @@ static func key_chip(text: String) -> PanelContainer:
 const ARROWS := {"UP": -PI / 2, "DOWN": PI / 2, "LEFT": PI, "RIGHT": 0.0}
 
 
-## Triangulo apontando na direcao de uma seta do teclado.
-class ArrowGlyph extends Control:
-	var _angle := 0.0
-
+## Seta do teclado (slot "key_arrow", desenhado apontando para a direita e
+## girado); o placeholder e um triangulo.
+class ArrowGlyph extends UISprite:
 	func _init(angle: float) -> void:
-		_angle = angle
-		custom_minimum_size = Vector2(12, 18)
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		super("key_arrow", Vector2(12, 18))
+		color = UIStyle.TEXT
+		sprite_angle = angle
 
-	func _draw() -> void:
+	func _draw_placeholder() -> void:
 		var c := size * 0.5
 		var pts := PackedVector2Array()
 		for p in [Vector2(5, 0), Vector2(-4, -5), Vector2(-4, 5)]:
-			pts.append(c + p.rotated(_angle))
-		draw_colored_polygon(pts, UIStyle.TEXT)
+			pts.append(c + p.rotated(sprite_angle))
+		draw_colored_polygon(pts, color)
 
 
 static func button(text: String) -> Button:
@@ -189,11 +196,13 @@ static func theme() -> Theme:
 	var focus := hover.duplicate() as StyleBoxFlat
 	focus.bg_color = Color(CYAN, 0.15)
 
-	t.set_stylebox("normal", "Button", normal)
-	t.set_stylebox("hover", "Button", hover)
-	t.set_stylebox("pressed", "Button", pressed)
-	t.set_stylebox("hover_pressed", "Button", pressed)
-	t.set_stylebox("focus", "Button", focus)
+	# Estados sem sprite proprio usam o do estado mais proximo.
+	t.set_stylebox("normal", "Button", UISkin.stylebox("button_normal", normal))
+	t.set_stylebox("hover", "Button", UISkin.stylebox(["button_hover", "button_normal"], hover))
+	var pressed_box := UISkin.stylebox(["button_pressed", "button_hover", "button_normal"], pressed)
+	t.set_stylebox("pressed", "Button", pressed_box)
+	t.set_stylebox("hover_pressed", "Button", pressed_box)
+	t.set_stylebox("focus", "Button", UISkin.stylebox(["button_focus", "button_hover"], focus))
 	t.set_font("font", "Button", display_font())
 	t.set_font_size("font_size", "Button", 13)
 	t.set_color("font_color", "Button", TEXT)
@@ -201,7 +210,16 @@ static func theme() -> Theme:
 	t.set_color("font_focus_color", "Button", Color.WHITE)
 	t.set_color("font_pressed_color", "Button", GOLD)
 	t.set_color("font_hover_pressed_color", "Button", GOLD)
-	t.set_stylebox("panel", "PanelContainer", panel())
+	t.set_stylebox("panel", "PanelContainer", frame("panel"))
+	var separator := UISkin.texture("separator")
+	if separator != null:
+		# Estica so na largura: a altura do sprite fica inteira.
+		var line := StyleBoxTexture.new()
+		line.texture = separator
+		line.texture_margin_top = floorf(separator.get_height() * 0.5)
+		line.texture_margin_bottom = separator.get_height() - line.texture_margin_top
+		t.set_stylebox("separator", "HSeparator", line)
+		t.set_constant("separation", "HSeparator", int(separator.get_height()))
 	_theme = t
 	return t
 

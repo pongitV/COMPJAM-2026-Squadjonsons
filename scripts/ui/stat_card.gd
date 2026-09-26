@@ -2,6 +2,7 @@ class_name StatCard
 extends PanelContainer
 ## Card do HUD: icone, legenda e um numero que "rola" ate o valor alvo,
 ## pulsando na cor do card ao subir e em vermelho ao cair.
+## `id` escolhe os sprites: moldura "card_<id>" (ou "card") e icone "icon_<id>".
 
 var icon: HexIcon
 var _color: Color
@@ -11,16 +12,16 @@ var _target := 0
 var _shown := 0.0
 
 
-func _init(caption: String, color: Color) -> void:
+func _init(caption: String, color: Color, id: String) -> void:
 	_color = color
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	add_theme_stylebox_override("panel", UIStyle.panel(color))
+	add_theme_stylebox_override("panel", UIStyle.frame(["card_" + id, "card"], color))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	add_child(row)
-	icon = HexIcon.new(color, 30)
+	icon = HexIcon.new("icon_" + id, color, 30)
 	row.add_child(icon)
 
 	var col := VBoxContainer.new()

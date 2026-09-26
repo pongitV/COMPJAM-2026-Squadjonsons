@@ -4,6 +4,12 @@ extends PanelContainer
 ## proximo canhao comum (um hexagono aceso por asteroide destruido).
 
 const TYPES := [Weapons.COMMON, Weapons.SHOTGUN, Weapons.LASER, Weapons.BOMB]
+const ICON_SLOTS := {
+	Weapons.COMMON: "icon_cannon_common",
+	Weapons.SHOTGUN: "icon_cannon_shotgun",
+	Weapons.LASER: "icon_cannon_laser",
+	Weapons.BOMB: "icon_cannon_bomb",
+}
 
 var _counts := {}
 var _labels := {}
@@ -14,7 +20,7 @@ var _pips: HexPips
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	add_theme_stylebox_override("panel", UIStyle.panel(Weapons.color(Weapons.COMMON)))
+	add_theme_stylebox_override("panel", UIStyle.frame(["card_cannons", "card"], Weapons.color(Weapons.COMMON)))
 
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 4)
@@ -27,7 +33,7 @@ func _init() -> void:
 	for w in TYPES:
 		var entry := HBoxContainer.new()
 		entry.add_theme_constant_override("separation", 4)
-		var icon := HexIcon.new(Weapons.color(w), 18)
+		var icon := HexIcon.new(ICON_SLOTS[w], Weapons.color(w), 18)
 		icon.spin_speed = 0.0
 		var count := UIStyle.label("0", 16, UIStyle.TEXT, UIStyle.DISPLAY)
 		entry.add_child(icon)
@@ -63,8 +69,10 @@ func set_progress(filled: int) -> void:
 	_pips.set_filled(filled)
 
 
-## Fileira de hexagonos que acendem conforme o progresso.
+## Fileira de hexagonos que acendem conforme o progresso. Cada um usa o
+## sprite "pip_full" / "pip_empty" se existir; senao, o hexagono desenhado.
 class HexPips extends Control:
+	const PIP := 15.0
 	var _total := 5
 	var _filled := 0
 	var _color := Color.WHITE
@@ -73,7 +81,7 @@ class HexPips extends Control:
 	func _init(total: int, color: Color) -> void:
 		_total = total
 		_color = color
-		custom_minimum_size = Vector2(total * 15, 14)
+		custom_minimum_size = Vector2(total * PIP, PIP - 1.0)
 		size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -90,12 +98,19 @@ class HexPips extends Control:
 
 	func _draw() -> void:
 		for i in _total:
-			var c := Vector2(7 + i * 15, size.y * 0.5)
+			var c := Vector2(7 + i * PIP, size.y * 0.5)
+			var lit := i < _filled
+			# O ultimo aceso pisca branco ao acender.
+			var flash := _flash * 0.6 if i == _filled - 1 else 0.0
+			var tex := UISkin.texture("pip_full" if lit else "pip_empty")
+			if tex != null:
+				var box := Vector2.ONE * (PIP - 1.0)
+				draw_texture_rect(tex, Rect2(c - box * 0.5, box), false, Color.WHITE.lerp(Color(2, 2, 2), flash))
+				continue
 			var pts := PackedVector2Array()
 			for k in 6:
 				pts.append(c + Vector2.from_angle(PI / 6.0 + k * TAU / 6.0) * 6.0)
-			if i < _filled:
-				var fill := _color.lerp(Color.WHITE, _flash * 0.6) if i == _filled - 1 else _color
-				draw_colored_polygon(pts, fill)
+			if lit:
+				draw_colored_polygon(pts, _color.lerp(Color.WHITE, flash))
 			pts.append(pts[0])
 			draw_polyline(pts, Color(_color, 0.7), 1.2, true)

@@ -31,8 +31,9 @@ func _ready() -> void:
 	add_child(_root)
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.04, 0.7)
+	var dim_color := ColorRect.new()
+	dim_color.color = Color(0.0, 0.01, 0.04, 0.7)
+	var dim := UISkin.replace("backdrop_pause", dim_color, true)
 	_root.add_child(dim)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -108,9 +109,9 @@ func _pop_in(panel: Control) -> void:
 
 
 func _build_main() -> Control:
-	var parts := Manual.make_panel(UIStyle.CYAN)
+	var parts := Manual.make_panel("panel_pause", UIStyle.CYAN)
 	var col: VBoxContainer = parts[1]
-	Manual.title(col, "HEXCORE", "PAUSADO", UIStyle.CYAN)
+	Manual.title(col, "icon_pause", "HEXCORE", "PAUSADO", UIStyle.CYAN)
 
 	_resume_button = UIStyle.button("CONTINUAR")
 	_resume_button.pressed.connect(resume)
