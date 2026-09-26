@@ -81,12 +81,17 @@ extends Resource
 @export_range(0.0, 20.0, 0.1, "suffix:rad/s") var spin_limit := 3.0
 ## Elasticidade da batida entre asteroides (0 = gruda, 1 = quique perfeito).
 @export_range(0.0, 1.0, 0.05) var bounce := 0.6
-## Velocidade extra dos pedacos quando um asteroide se parte na nave.
-@export_range(0.0, 200.0, 1.0, "suffix:px/s") var split_speed := 15.0
 
-@export_group("Dano na nave")
-## Quantas celulas da nave cada celula do asteroide destroi antes de sumir.
-@export_range(1, 10, 1) var cell_charges := 2
+@export_group("Batida na nave")
+## Ao bater na nave o asteroide quica (a nave nao e empurrada) e destroi as
+## celulas dela que tocou, sem perder celulas. Dano que o asteroide toma por
+## celula da nave que destroi.
+@export_range(0.0, 50.0, 0.5) var contact_damage := 2.0
+## Segundos ate o mesmo asteroide poder destruir celulas da nave de novo
+## (evita que ele "fure" a nave enquanto ainda esta encostado).
+@export_range(0.0, 5.0, 0.05, "suffix:s") var contact_cooldown := 0.5
+## Elasticidade do quique na nave (0 = para, 1 = quique perfeito).
+@export_range(0.0, 1.0, 0.05) var contact_bounce := 0.5
 
 @export_group("Minerio")
 ## Fracao das celulas que se perde quando o asteroide vira minerio (canhoes
@@ -106,6 +111,11 @@ extends Resource
 @export_range(0.0, 300.0, 1.0, "suffix:px/s") var ore_speed_max := 55.0
 ## Maximo de pedacos soltos na tela (os mais antigos somem).
 @export_range(1, 500, 1) var max_ores := 150
+## Pedacos soltos batem nos asteroides e quicam. Massa de cada celula de
+## minerio (a de asteroide vale 1: com 0.1, o minerio e 10x mais leve).
+@export_range(0.01, 1.0, 0.01) var ore_cell_mass := 0.1
+## Elasticidade da batida minerio x asteroide.
+@export_range(0.0, 1.0, 0.05) var ore_bounce := 0.9
 
 
 ## Multiplicador de dificuldade depois de `elapsed` segundos de partida.

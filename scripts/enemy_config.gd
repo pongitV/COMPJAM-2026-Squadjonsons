@@ -56,6 +56,16 @@ extends Resource
 ## Tempo que o laser inimigo precisa ficar sobre uma celula para destrui-la.
 @export_range(0.05, 5.0, 0.05, "suffix:s") var laser_cell_time := 0.45
 
+@export_group("Empurrao nos asteroides")
+## Tiros inimigos que acertam outros asteroides nao causam dano: empurram o
+## asteroide no sentido do tiro. O valor e dividido pelo numero de celulas
+## (ex.: 90 empurra um asteroide de 3 celulas a 30 px/s e um de 18 a 5 px/s).
+@export_range(0.0, 2000.0, 5.0) var push_per_hit := 90.0
+## Explosao da bomba: empurra para longe do centro (mais fraco na borda).
+@export_range(0.0, 5000.0, 10.0) var push_blast := 400.0
+## Laser: empurrao continuo por segundo enquanto o raio cruza o asteroide.
+@export_range(0.0, 5000.0, 10.0) var push_laser := 240.0
+
 
 func armed_chance(progress: float) -> float:
 	return lerpf(armed_chance_start, armed_chance_end, progress)

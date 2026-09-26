@@ -19,16 +19,17 @@ const SLICE := {
 ## digitacao: pedir um slot que nao esta aqui falha em modo debug.
 const SLOTS := {
 	# Paineis (9-slice)
-	"card": "Moldura padrao dos cards do HUD (usada se o card nao tiver a sua).",
-	"card_cells": "Card de hexagonos (HUD).",
-	"card_time": "Card de tempo (HUD).",
-	"card_cannons": "Card de canhoes (HUD).",
+	"card": "Moldura padrao dos cards do menu (usada se o card nao tiver a sua).",
 	"card_record": "Card de recorde (menu principal).",
-	"card_race": "Moldura da linha de chegada no rodape.",
 	"panel": "Moldura padrao dos paineis grandes (usada se o painel nao tiver a sua).",
 	"panel_pause": "Painel do menu de pausa.",
 	"panel_manual": "Painel do manual.",
-	"panel_game_over": "Painel de game over.",
+	# Abas da UI de jogo (9-slice; o padrao e a aba geometrica HexTabStyle)
+	"tab": "Moldura padrao das abas do HUD (usada se a aba nao tiver a sua).",
+	"tab_cells": "Aba de hexagonos da nave (topo, esquerda).",
+	"tab_countdown": "Aba do countdown ate a chegada (topo, direita).",
+	"tab_race": "Aba longa da linha de chegada no rodape.",
+	"panel_game_over": "Painel da tela de fim (game over).",
 	"key": "Chip de tecla do manual.",
 	"separator": "Linha separadora horizontal (so estica na largura).",
 	# Botoes (9-slice)
@@ -37,15 +38,9 @@ const SLOTS := {
 	"button_pressed": "Botao apertado / aba ativa (sem ele: hover ou normal).",
 	"button_focus": "Destaque de foco do teclado, desenhado por cima do botao (sem ele: button_hover).",
 	# Icones (encaixados no tamanho do placeholder)
-	"icon_cells": "Icone do card de hexagonos.",
-	"icon_time": "Icone do card de tempo.",
 	"icon_record": "Icone do card de recorde.",
 	"icon_pause": "Icone do titulo do menu de pausa.",
 	"icon_manual": "Icone do titulo do manual.",
-	"icon_cannon_common": "Canhao comum no card de canhoes.",
-	"icon_cannon_shotgun": "Shotgun no card de canhoes.",
-	"icon_cannon_laser": "Laser no card de canhoes.",
-	"icon_cannon_bomb": "Bomba no card de canhoes.",
 	"key_arrow": "Seta das teclas direcionais, apontando para a DIREITA (e girada).",
 	"reticle": "Mira que segue o mouse durante o jogo (centro = ponta do mouse).",
 	"race_marker": "Marcador da nave na linha de chegada do rodape.",

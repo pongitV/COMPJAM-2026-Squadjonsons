@@ -10,6 +10,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 |---|---|
 | Mover | WASD / setas |
 | Arrastar pedaço de minério até a nave | Clique esquerdo (segurar e soltar onde o encaixe aparecer) |
+| Puxar pedaço sozinho até a nave | Clique rápido nele (dentro do alcance do raio trator) |
 | Girar o pedaço arrastado | Roda do mouse |
 | Girar a nave para o mouse | Clique direito (segurar) |
 | Pausar / info | ESC (ou P) |
@@ -18,9 +19,9 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 
 ## Regras
 - **Jogador**: começa com 1 célula, a *core* (branca com detalhes azuis), com um canhão comum. Só células com canhão atiram, **sozinhas**: cada canhão mira no asteroide mais próximo dele (com mira antecipada). As demais células são casco e protegem a core.
-- **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e batem entre si (quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. O dano na nave é por contato: cada célula do asteroide que encosta na nave destrói a célula da nave que ela tocou; depois de destruir 2, ela some (se o asteroide se partir, as partes seguem como asteroides separados; partes com menos de 3 células viram poeira). Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
-- **Asteroides armados**: alguns asteroides nascem com canhões (os mesmos da nave) e atiram nela; cada acerto destrói uma célula da nave ou de um pedaço de minério solto (o pedaço se parte se ficar desconectado). O cano brilha em vermelho logo antes do tiro. Conforme a barra de chegada avança, mais asteroides vêm armados, com canhões maiores e atirando mais rápido e com mais precisão (`config/enemies.tres`).
-- **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
+- **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e batem entre si (quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. O dano na nave é por contato: o asteroide quica na nave e destrói as células dela que tocou, sem perder células, e toma **2 de dano por célula destruída** (depois espera 0,5 s para poder causar dano de novo, para não "furar" a nave). Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
+- **Asteroides armados**: alguns asteroides nascem com canhões (os mesmos da nave) e atiram nela; cada acerto destrói uma célula da nave ou de um pedaço de minério solto (o pedaço se parte se ficar desconectado). Tiros que acertam outros asteroides não causam dano, só os empurram no sentido do tiro (mais fraco quanto maior o asteroide; a bomba empurra para longe da explosão). O cano brilha em vermelho logo antes do tiro. Conforme a barra de chegada avança, mais asteroides vêm armados, com canhões maiores e atirando mais rápido e com mais precisão (`config/enemies.tres`).
+- **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços soltos quicam nos asteroides e na nave (com massa bem menor que eles) e são arrastados devagar para a esquerda, saindo da tela se ninguém pegar. Eles não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Um **clique rápido** num pedaço dentro do alcance puxa ele sozinho até a nave, e ele encaixa no primeiro lugar em que couber. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
 
 ### Canhões
 O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em **triângulo** se fundem num único canhão maior que ocupa o triângulo todo (os maiores têm prioridade). O núcleo é um canhão comum que nunca se funde. Se uma célula de um canhão grande for destruída, ele se desfaz e as células que sobraram voltam a se fundir no maior triângulo que ainda formarem (ex.: um laser que perde uma ponta vira bomba + comuns). Canhões funcionam em qualquer lugar da nave.
@@ -60,16 +61,19 @@ O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em *
 | `scripts/ui/ui_style.gd` | Paleta, fontes e estilos da interface; `plain()` tira acentos (a fonte Hexagon não tem) |
 | `scripts/ui/hex_frame.gd`, `art/ui/hex_frame.png` | Moldura de hexágonos do HUD: 9-slice, variações de cor e espessura |
 | `scripts/display.gd` | Tela cheia e escala aplicadas por código; F11 / Alt+Enter alternam tela cheia e janela |
-| `scripts/ui/hud.gd` | HUD: cards animados, textos flutuantes, vinheta de dano, mira e game over |
+| `scripts/ui/hud.gd` | HUD: abas de hexágonos e countdown, textos flutuantes, vinheta de dano, mira e tela de fim |
+| `scripts/ui/hex_tab_style.gd`, `scripts/ui/hud_tab.gd` | Estilo geométrico da UI de jogo (abas em chevron desenhadas em vetor) e a aba do topo do HUD |
 | `scripts/ui/race_bar.gd` | Linha de chegada no rodapé (marcador da nave e bandeira) |
-| `scripts/ui/stat_card.gd`, `cannon_card.gd`, `hex_icon.gd` | Cards do HUD (status e canhões) e ícone animado (placeholder hexagonal) |
+| `scripts/ui/stat_card.gd`, `hex_icon.gd` | Card do recorde no menu e ícone animado (placeholder hexagonal) |
 | `scripts/ui/pause_menu.gd` | Menu de pausa (continuar, info, menu principal, sair) |
 | `scripts/ui/manual.gd` | Manual (controles, regras, canhões) e painéis compartilhados pelos menus |
 
 ## Tela e moldura do HUD
 O jogo abre em **tela cheia** e escala tudo (UI, sprites, mundo) a partir da resolução base 1280×720 (`canvas_items` + `expand`: telas mais largas ou mais altas mostram mais área, sem distorcer). Isso é aplicado por código em `scripts/display.gd` ao abrir o menu e a partida, então não depende do `project.godot` (que o editor pode sobrescrever).
 
-Cards, painéis, botões, abas, chips de tecla e a linha de chegada usam a moldura `art/ui/hex_frame.png` (`HexFrame`):
+**UI de jogo (HUD e tela de fim)**: estilo hexagonal geométrico e simples (`HexTabStyle`), desenhado em vetor: abas com pontas em chevron, miolo chapado, contorno na cor do conteúdo e um contorno interno de destaque. No topo, à esquerda, a aba com o número atual de hexágonos da nave; à direita, o **countdown** até o fim da corrida (5:00 → 0:00; dourado no último minuto, vermelho e pulsando nos últimos 10 s). No rodapé, a linha de chegada numa aba longa. A tela de fim mostra quanto faltava para a chegada, as estatísticas e os botões no mesmo estilo.
+
+**Menus (principal, pausa, manual)**: usam a moldura `art/ui/hex_frame.png` (`HexFrame`):
 - **Escala**: 9-slice. As pontas em chevron e os cantos ficam intactos, a fileira de hexágonos da borda se repete na horizontal e a coluna do meio da ponta se repete na vertical, então a moldura estica em qualquer largura e altura.
 - **Cor**: segue o conteúdo (hexágonos em ciano, canhões em azul, tempo em cinza, recorde em dourado, manual em verde, game over em vermelho, pausa e barra de chegada no roxo original). A arte é recolorida trocando o matiz e escurecida até a luminância do roxo original, para o texto continuar legível.
 - **Espessura**: `THIN` (chips), `SMALL` (botões e barra), `MEDIUM` (cards) e `LARGE` (painéis grandes).
@@ -82,11 +86,12 @@ Para trocar uma peça específica pela sua arte, salve um PNG em `art/ui/` com o
 
 | Slots | O que são | Como é encaixado |
 |---|---|---|
-| `card`, `card_cells`, `card_time`, `card_cannons`, `card_record` | Molduras dos cards (`card` vale para os que não tiverem a sua) | 9-slice |
-| `panel`, `panel_pause`, `panel_manual`, `panel_game_over` | Molduras dos painéis (`panel` vale para todos) | 9-slice |
+| `card`, `card_record` | Moldura do card de recorde do menu | 9-slice |
+| `panel`, `panel_pause`, `panel_manual` | Molduras dos painéis dos menus (`panel` vale para todos) | 9-slice |
+| `tab`, `tab_cells`, `tab_countdown`, `tab_race`, `panel_game_over` | Abas do HUD e painel da tela de fim (`tab` vale para as que não tiverem a sua) | 9-slice |
 | `button_normal`, `button_hover`, `button_pressed`, `button_focus` | Estados dos botões e abas (os que faltarem usam o estado mais próximo) | 9-slice |
 | `key`, `separator` | Chip de tecla do manual e linha separadora | 9-slice / estica na largura |
-| `icon_cells`, `icon_time`, `icon_record`, `icon_pause`, `icon_manual`, `icon_cannon_*` | Ícones dos cards e títulos (pulsam, não giram) | Cabe no tamanho do placeholder |
+| `icon_record`, `icon_pause`, `icon_manual` | Ícones do card de recorde e dos títulos (pulsam, não giram) | Cabe no tamanho do placeholder |
 | `race_marker`, `race_flag` | Marcador da nave e bandeira de chegada na linha do rodapé | Cabe no tamanho do placeholder |
 | `reticle`, `key_arrow` | Mira e seta das teclas | Cabe no tamanho do placeholder |
 | `title_logo` | Logo do menu (substitui o texto HEXCORE) | Tamanho real |
@@ -103,9 +108,9 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 | Spawn | atraso do primeiro, intervalo inicial/mínimo, quanto acelera por segundo, variação aleatória, **máximo de asteroides vivos**, distância de spawn/despawn, desvio da mira em direção à nave |
 | Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
 | Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
-| Movimento | faixa de velocidade, multiplicador para pequenos/grandes, giro inicial e máximo, elasticidade das batidas, velocidade ao se partir |
-| Dano na nave | quantas células da nave cada célula do asteroide destrói |
-| Minério | fração perdida, em quantos pedaços se parte (tamanho até o qual não se parte, células por pedaço a mais, variação), velocidade dos pedaços, máximo na tela |
+| Movimento | faixa de velocidade, multiplicador para pequenos/grandes, giro inicial e máximo, elasticidade das batidas |
+| Batida na nave | dano que o asteroide toma por célula da nave destruída (2), intervalo até poder causar dano de novo, elasticidade do quique |
+| Minério | fração perdida, em quantos pedaços se parte (tamanho até o qual não se parte, células por pedaço a mais, variação), velocidade dos pedaços, máximo na tela, massa das células de minério e elasticidade da batida com asteroides |
 
 ## Viagem (fundo e chegada)
 A câmera fica parada e só o fundo rola, dando a impressão de que a nave avança para a direita; a nave se move livre, mas presa na tela. Para reforçar, os asteroides nascem de preferência à frente (direita) e são arrastados devagar para a esquerda. No rodapé, o marcador da nave anda até a bandeira de chegada e a alcança aos 5 min. Tudo isso fica em `config/travel.tres` (explicações em `scripts/travel_config.gd`), com presets pelo campo **Travel Config** do nó `Game`.
@@ -114,7 +119,7 @@ A câmera fica parada e só o fundo rola, dando a impressão de que a nave avan�
 |---|---|
 | Fundo | velocidade inicial, aumento por minuto e máxima, direção do avanço, parallax das estrelas distantes/próximas, quantidade de estrelas, rastro das estrelas, linhas de velocidade (quantidade, opacidade, velocidade) |
 | Efeitos de velocidade | riscos atrás da nave e dos asteroides (quantidade, comprimento, opacidade), partículas de rastro da nave por segundo |
-| Fluxo | arrasto dos asteroides para trás (padrão 45 px/s), chance de nascerem à frente (70%) e abertura desse arco (120°) |
+| Fluxo | arrasto dos asteroides e dos minérios soltos para trás (padrão 45 px/s cada), chance de nascerem à frente (70%) e abertura desse arco (120°) |
 | Chegada | tempo até a bandeira (padrão 300 s) |
 
 ## Parâmetros dos canhões
@@ -135,6 +140,8 @@ Ficam em `config/enemies.tres` (explicações em `scripts/enemy_config.gd`), com
 |---|---|
 | Armamento | chance de nascer armado, máximo de canhões por asteroide, folga de tamanho (o asteroide precisa ter as células do canhão + folga), fração máxima de células que podem ser canhão, chance relativa de cada canhão |
 | Força | multiplicador de recarga, velocidade dos projéteis, erro de mira, alcance, espera antes do primeiro tiro, projéteis da shotgun, raio da bomba, tempo do laser para destruir uma célula |
+| Empurrão nos asteroides | força do empurrão de projétil, da explosão da bomba e do laser (por segundo), dividida pelo nº de células do asteroide |
+
 Os demais parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: `SIZE` em `hex.gd`, movimento da nave em `player.gd`).
 
 ## Créditos

@@ -3,6 +3,8 @@ extends Node2D
 ## Raio trator: clique e arraste um pedaco de minerio (dentro do alcance da
 ## nave) e solte perto da nave para encaixa-lo no grid. O pedaco se alinha
 ## ao grid da nave em passos de 60 graus; a roda do mouse gira o pedaco.
+## Um clique rapido (sem segurar) puxa o pedaco sozinho ate a nave, e ele
+## encaixa no primeiro lugar em que couber.
 
 ## placement: {celula da nave: canhao}, pronto para Player.attach_piece().
 signal attached(ore: Ore, placement: Dictionary)
@@ -16,9 +18,17 @@ const SNAP_DIST := Hex.SIZE * 2.4
 ## Quao rapido o pedaco segue o mouse e gira ate o alinhamento.
 const FOLLOW := 16.0
 const ALIGN := 14.0
+## Soltar antes deste tempo conta como clique rapido (puxa sozinho).
+const QUICK_CLICK := 0.25
+## Velocidade do pedaco puxado e tempo maximo tentando encaixar.
+const PULL_SPEED := 420.0
+const PULL_TIMEOUT := 4.0
 
 ## Pedaco sendo arrastado (ou null).
 var ore: Ore = null
+## Pedacos sendo puxados sozinhos: [{ore, turns, time}].
+var _pulled: Array[Dictionary] = []
+var _held := 0.0
 ## Pedaco sob o mouse, quando nada esta sendo arrastado.
 var hover: Ore = null
 ## Onde o pedaco vai encaixar se for solto agora ({} = em lugar nenhum).
@@ -45,11 +55,38 @@ func step(delta: float, player: Player, ores: Array[Ore], mouse: Vector2, presse
 			_grab(hover, mouse)
 
 	if ore != null:
+		_held += delta
 		if not pressed or not player.alive:
 			_release()
 		else:
 			_drag(delta, mouse)
+	_step_pulled(delta)
 	queue_redraw()
+
+
+## Pedacos puxados: vao ate a nave, alinhados ao grid, e encaixam assim que
+## houver lugar. Desistem se demorarem demais (ex.: sem espaco livre).
+func _step_pulled(delta: float) -> void:
+	for p in _pulled.duplicate():
+		var piece: Ore = p.ore if is_instance_valid(p.ore) else null
+		p.time += delta
+		if piece == null or not _player.alive or p.time > PULL_TIMEOUT:
+			if piece != null:
+				piece.dragged = false
+			_pulled.erase(p)
+			continue
+		var to_ship := _player.global_position - piece.global_position
+		var move := to_ship.limit_length(PULL_SPEED * delta)
+		piece.velocity = move / maxf(delta, 0.0001)
+		piece.global_position += move
+		var turns: int = p.turns
+		var aligned := _player.rotation + turns * PI / 3.0
+		piece.rotation = lerp_angle(piece.rotation, aligned, 1.0 - exp(-ALIGN * delta))
+		var fit := _player.find_placement(piece, p.turns, SNAP_DIST)
+		if not fit.is_empty():
+			piece.dragged = false
+			_pulled.erase(p)
+			attached.emit(piece, fit)
 
 
 ## Gira o pedaco segurado em passos de 60 graus (+1 horario, -1 anti-horario).
@@ -67,6 +104,15 @@ func drop() -> void:
 	placement = {}
 
 
+## Solta tambem os pedacos que estavam sendo puxados (fim de jogo).
+func drop_all() -> void:
+	drop()
+	for p in _pulled:
+		if is_instance_valid(p.ore):
+			p.ore.dragged = false
+	_pulled.clear()
+
+
 func _grab(piece: Ore, mouse: Vector2) -> void:
 	ore = piece
 	ore.dragged = true
@@ -74,6 +120,7 @@ func _grab(piece: Ore, mouse: Vector2) -> void:
 	# Comeca no alinhamento de 60 graus mais proximo do angulo atual do pedaco.
 	_turns = roundi(wrapf(ore.rotation - _player.rotation, -PI, PI) / (PI / 3.0))
 	_grab_offset = ore.global_position - mouse
+	_held = 0.0
 	hover = null
 
 
@@ -93,9 +140,14 @@ func _drag(delta: float, mouse: Vector2) -> void:
 func _release() -> void:
 	var released := ore
 	var fit := placement
+	var quick := _held < QUICK_CLICK
 	drop()
 	if not fit.is_empty():
 		attached.emit(released, fit)
+	elif quick and _player.alive:
+		# Clique rapido: o pedaco segue sozinho ate a nave.
+		released.dragged = true
+		_pulled.append({"ore": released, "turns": _turns, "time": 0.0})
 	else:
 		released.velocity *= 0.6  # arremesso suave
 		released.angular_velocity = randf_range(-0.6, 0.6)
@@ -109,7 +161,8 @@ func _piece_under(mouse: Vector2, ores: Array[Ore]) -> Ore:
 	var best: Ore = null
 	var best_dist := INF
 	for o in ores:
-		if o.global_position.distance_to(mouse) > o.bound_radius + PICK_RADIUS:
+		# Pedacos ja presos no raio (arrastado ou sendo puxado) ficam de fora.
+		if o.dragged or o.global_position.distance_to(mouse) > o.bound_radius + PICK_RADIUS:
 			continue
 		var h := o.find_cell_near(mouse, PICK_RADIUS)
 		if h == HexBody.NO_CELL:
@@ -125,6 +178,11 @@ func _draw() -> void:
 	if _player == null or not _player.alive:
 		return
 	var center := _player.global_position
+	# Feixes finos puxando os pedacos do clique rapido.
+	for p in _pulled:
+		if is_instance_valid(p.ore):
+			var c: Color = p.ore.main_color()
+			draw_line(center, p.ore.global_position, Color(c, 0.5), 1.5, true)
 	if ore != null:
 		var color := ore.main_color()
 		# Alcance do raio.

@@ -46,6 +46,9 @@ extends Resource
 ## Arrasto lento dos asteroides no sentido contrario ao avanco: somado a
 ## velocidade de cada um que nasce, faz eles "passarem" pela nave.
 @export_range(0.0, 500.0, 1.0, "suffix:px/s") var asteroid_drift := 45.0
+## Arrasto dos pedacos de minerio soltos (a velocidade deles tende a esta):
+## ficam para tras e saem da tela pela esquerda se ninguem pegar.
+@export_range(0.0, 500.0, 1.0, "suffix:px/s") var ore_drift := 45.0
 ## Chance de um asteroide nascer a frente (no sentido do avanco); o resto
 ## nasce em qualquer ponto em volta da tela.
 @export_range(0.0, 1.0, 0.05) var spawn_ahead_chance := 0.7
@@ -70,6 +73,11 @@ func direction() -> Vector2:
 ## Velocidade de arrasto somada aos asteroides.
 func drift() -> Vector2:
 	return -direction() * asteroid_drift
+
+
+## Velocidade para a qual os minerios soltos tendem.
+func ore_drift_velocity() -> Vector2:
+	return -direction() * ore_drift
 
 
 ## Angulo (a partir do centro da tela) onde um asteroide nasce.

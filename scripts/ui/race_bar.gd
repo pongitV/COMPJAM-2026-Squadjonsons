@@ -19,7 +19,7 @@ var _left: Label
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_marker = HexIcon.new("race_marker", UIStyle.CYAN, MARKER_SIZE)
-	_marker.spin_speed = 1.5
+	_marker.spin_speed = 0.0
 	add_child(_marker)
 	_flag = FlagIcon.new()
 	add_child(_flag)
@@ -35,11 +35,12 @@ func set_time(elapsed: float, duration: float) -> void:
 	if finished and progress < 1.0:
 		_marker.kick()
 	progress = p
+	# O tempo restante fica no countdown do topo; aqui so o aviso de chegada.
 	if finished:
 		_left.text = UIStyle.plain("CHEGADA!")
 		_left.add_theme_color_override("font_color", UIStyle.GOLD)
 	else:
-		_left.text = UIStyle.plain("FALTAM " + UIStyle.fmt_time(duration - elapsed))
+		_left.text = ""
 	_layout()
 	queue_redraw()
 

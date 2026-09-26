@@ -176,6 +176,78 @@ func find_cell_near(global_p: Vector2, radius: float) -> Vector2i:
 	return best
 
 
+## Momento de inercia com massa 1 por celula (multiplique pela massa da celula).
+func inertia() -> float:
+	var sum := 0.0
+	for h in cells:
+		sum += cell_local(h).length_squared() + Hex.SIZE * Hex.SIZE * 0.5
+	return sum
+
+
+## Batida entre dois corpos de celulas: se alguma celula de um encosta numa
+## do outro, aplica um impulso no ponto de contato e afasta os dois para nao
+## ficarem sobrepostos. `mass_a`/`mass_b` sao as massas totais (INF = corpo
+## que nao se mexe, ex.: a nave); `bounce` = elasticidade (0 = gruda,
+## 1 = quique perfeito). Retorna true se estavam encostados.
+static func bounce_apart(a: HexBody, b: HexBody, mass_a: float, mass_b: float, bounce: float, spin_limit: float) -> bool:
+	var reach := a.bound_radius + b.bound_radius
+	if a.global_position.distance_squared_to(b.global_position) > reach * reach:
+		return false
+	# Contato: media dos pontos e das normais entre celulas encostadas
+	# (procura com as celulas do menor no grid do maior).
+	var swap := a.cells.size() > b.cells.size()
+	var small: HexBody = b if swap else a
+	var big: HexBody = a if swap else b
+	var contact := Vector2.ZERO
+	var normal := Vector2.ZERO
+	var depth := 0.0
+	var touching := 0
+	for h in small.cells:
+		var p := small.cell_global(h)
+		var touched := big.find_cell_near(p, CONTACT_DIST)
+		if touched == NO_CELL:
+			continue
+		var q := big.cell_global(touched)
+		contact += (p + q) * 0.5
+		normal += p - q
+		depth = maxf(depth, CONTACT_DIST - p.distance_to(q))
+		touching += 1
+	if touching == 0:
+		return false
+	contact /= touching
+	normal = normal.normalized()
+	if normal == Vector2.ZERO:
+		normal = (small.global_position - big.global_position).normalized()
+	# A normal aponta de `big` para `small`.
+	var m_small := mass_b if swap else mass_a
+	var m_big := mass_a if swap else mass_b
+	var inv_small := 1.0 / m_small
+	var inv_big := 1.0 / m_big
+	var inv_i_small := inv_small * small.cells.size() / small.inertia()
+	var inv_i_big := inv_big * big.cells.size() / big.inertia()
+	var r_small := contact - small.global_position
+	var r_big := contact - big.global_position
+	var v_small := small.velocity + Vector2(-small.angular_velocity * r_small.y, small.angular_velocity * r_small.x)
+	var v_big := big.velocity + Vector2(-big.angular_velocity * r_big.y, big.angular_velocity * r_big.x)
+	var approach := (v_small - v_big).dot(normal)
+	if approach < 0.0:
+		var rn_small := r_small.cross(normal)
+		var rn_big := r_big.cross(normal)
+		var j := -(1.0 + bounce) * approach / (inv_small + inv_big
+			+ rn_small * rn_small * inv_i_small + rn_big * rn_big * inv_i_big)
+		small.velocity += normal * j * inv_small
+		big.velocity -= normal * j * inv_big
+		if inv_small > 0.0:
+			small.angular_velocity = clampf(small.angular_velocity + rn_small * j * inv_i_small, -spin_limit, spin_limit)
+		if inv_big > 0.0:
+			big.angular_velocity = clampf(big.angular_velocity - rn_big * j * inv_i_big, -spin_limit, spin_limit)
+	# Separa proporcionalmente a massa (o mais leve anda mais).
+	var push := normal * depth * 0.8 / (inv_small + inv_big)
+	small.position += push * inv_small
+	big.position -= push * inv_big
+	return true
+
+
 ## Move o pivo para o centro das celulas sem tira-las do lugar (usado quando
 ## um objeto ganha ou perde celulas, ou nasce de pedacos de outro).
 func recenter() -> void:

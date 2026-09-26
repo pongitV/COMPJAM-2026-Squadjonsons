@@ -57,6 +57,7 @@ func _ready() -> void:
 	_cfg = asteroid_config
 	Asteroid.config = _cfg
 	Weapons.config = cannon_config
+	Ore.drift = travel_config.ore_drift_velocity()
 	_spawn_timer = _cfg.first_spawn_delay
 	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -186,6 +187,7 @@ func _physics_process(delta: float) -> void:
 	for a in asteroids:
 		a.step(delta)
 	_collide_asteroids()
+	_collide_ores()
 	bullets.step(delta, asteroids)
 	lasers.step(delta, player, asteroids, fx)
 	if not missiles.step(delta, asteroids, fx).is_empty():
@@ -194,10 +196,11 @@ func _physics_process(delta: float) -> void:
 		if a.hp <= 0:
 			_destroy_asteroid(a)
 
-	# Tiros inimigos acertam a nave e os minerios soltos.
+	# Tiros inimigos destroem celulas da nave e dos minerios soltos e empurram
+	# os outros asteroides.
 	var targets: Array = [player] if player.alive else []
 	targets.append_array(ores)
-	var shot_hits := enemy_shots.step(delta, targets, fx)
+	var shot_hits := enemy_shots.step(delta, targets, asteroids, fx)
 	for body in shot_hits:
 		if body is Ore and is_instance_valid(body):
 			_chip_ore(body, shot_hits[body].keys())
@@ -338,6 +341,20 @@ func _collide_asteroids() -> void:
 			asteroids[i].collide_with(asteroids[j])
 
 
+## Pedacos de minerio soltos quicam nos asteroides e na nave (massa 1 por
+## celula nos dois); sao bem mais leves que eles (ore_cell_mass). Os presos
+## no raio trator ficam de fora.
+func _collide_ores() -> void:
+	for ore in ores:
+		if ore.dragged:
+			continue
+		var ore_mass := ore.cells.size() * _cfg.ore_cell_mass
+		for a in asteroids:
+			HexBody.bounce_apart(ore, a, ore_mass, a.cells.size(), _cfg.ore_bounce, _cfg.spin_limit)
+		if player.alive:
+			HexBody.bounce_apart(ore, player, ore_mass, player.cells.size(), _cfg.ore_bounce, _cfg.spin_limit)
+
+
 ## Asteroide destruido pelos canhoes: pontos e minerio.
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
@@ -476,41 +493,35 @@ func _trim_ores() -> void:
 		_remove_ore(plain[0] if not plain.is_empty() else loose[0])
 
 
-## Contato celula a celula: cada celula de asteroide que encosta na nave
-## destroi a celula da nave que ela tocou; depois de cell_charges destruicoes
-## ela some. Partes da nave que se soltarem do nucleo viram pedacos soltos.
+## Asteroide que encosta na nave: quica (a nave nao e empurrada) e, fora do
+## intervalo contact_cooldown, destroi as celulas da nave que tocou, tomando
+## contact_damage de dano por celula destruida. O asteroide nao perde celulas.
+## Partes da nave que se soltarem do nucleo viram pedacos soltos.
 func _check_player_collisions() -> void:
 	var hits := PackedVector2Array()
 	var core_hit := false
-	for a: Asteroid in asteroids.duplicate():
+	for a: Asteroid in asteroids:
 		var reach := a.bound_radius + player.bound_radius
 		if a.global_position.distance_squared_to(player.global_position) > reach * reach:
 			continue
-		var spent: Array[Vector2i] = []
+		# Celulas da nave tocadas (antes do quique, que separa os dois).
+		var touched := {}
 		for h in a.cells:
 			var target := player.find_cell_near(a.cell_global(h), HexBody.CONTACT_DIST)
-			if target == HexBody.NO_CELL:
-				continue
+			if target != HexBody.NO_CELL:
+				touched[target] = true
+		if touched.is_empty():
+			continue
+		HexBody.bounce_apart(a, player, a.cells.size(), INF, _cfg.contact_bounce, _cfg.spin_limit)
+		if a.contact_cooldown > 0.0:
+			continue
+		a.contact_cooldown = _cfg.contact_cooldown
+		for target: Vector2i in touched:
 			hits.append(player.cell_global(target))
-			if a.spend_charge(h):
-				spent.append(h)
+			a.apply_damage(_cfg.contact_damage)
 			if player.destroy_cell(target):
 				core_hit = true
 				break
-		if not spent.is_empty():
-			for h in spent:
-				fx.burst(a.cell_global(h), a.base_color, 5, 110.0)
-			for piece in a.remove_cells(spent):
-				if piece.size < _cfg.min_size:
-					_crumble(piece)
-					piece.free()
-				else:
-					add_child(piece)
-					asteroids.append(piece)
-			if a.cells.size() < _cfg.min_size:
-				_crumble(a)
-				asteroids.erase(a)
-				a.queue_free()
 		if core_hit:
 			break
 	_after_player_damage(hits, core_hit)
@@ -547,12 +558,6 @@ func _after_player_damage(hits: PackedVector2Array, core_hit: bool) -> void:
 		return
 	for piece in player.settle_damage():
 		_detach_from_ship(piece)
-
-
-## Asteroide pequeno demais (menos de min_size celulas) vira poeira.
-func _crumble(a: Asteroid) -> void:
-	for h in a.cells:
-		fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 6, 90.0)
 
 
 ## Parte da nave que perdeu a ligacao com o nucleo: vira um pedaco solto,
@@ -710,17 +715,14 @@ func _to_screen(world_pos: Vector2) -> Vector2:
 
 
 func _update_hud() -> void:
-	hud.race_bar.set_time(elapsed, travel_config.race_duration)
-	hud.cells_card.set_value(player.cells.size())
-	hud.cells_card.set_sub("COLETADOS %s" % UIStyle.fmt_int(collected))
-	hud.time_card.set_text(UIStyle.fmt_time(elapsed))
-	hud.cannon_card.set_counts(player.weapon_counts())
+	hud.set_countdown(elapsed, travel_config.race_duration)
+	hud.cells_tab.set_value(player.cells.size())
 
 
 func _on_core_destroyed() -> void:
 	game_over = true
 	pause_menu.enabled = false
-	tractor.drop()
+	tractor.drop_all()
 	tractor.queue_redraw()
 	ship_destroy_sfx.play()
 	fx.burst(player.global_position, Player.CORE_COLOR, 60, 260.0)
@@ -732,6 +734,6 @@ func _on_core_destroyed() -> void:
 		SaveData.save_best_score(best_score)
 	hud.show_game_over({
 		"score": score, "best": best_score, "new_record": new_record,
-		"time": elapsed, "max_cells": max_cells,
+		"time": elapsed, "duration": travel_config.race_duration, "max_cells": max_cells,
 		"collected": collected, "destroyed": destroyed,
 	})
