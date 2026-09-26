@@ -71,7 +71,7 @@ func _ready() -> void:
 	add_child(cannon_sfx)
 	
 	laser_sfx = AudioStreamPlayer.new()
-	laser_sfx.stream = preload("res://Audio/SFX/laser_shot_final.wav")
+	laser_sfx.stream = preload("res://Audio/SFX/laser_shot_5_5s.wav")
 	laser_sfx.volume_db = -20.0
 	add_child(laser_sfx)
 
