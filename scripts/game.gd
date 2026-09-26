@@ -13,7 +13,6 @@ const ORE_LOSS := 0.2
 ## Tamanho (em células) dos pedaços em que o asteroide se parte.
 const PIECE_MIN := 2
 const PIECE_MAX := 4
-const SAVE_PATH := "user://save.cfg"
 ## Aproxima a câmera para as artes aparecerem maiores (1.0 = escala original).
 const ART_ZOOM := 1.2
 
@@ -47,7 +46,7 @@ func _ready() -> void:
 	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	InputActions.ensure_defaults()
-	best_score = _load_best()
+	best_score = SaveData.best_score()
 
 	var bg := CanvasLayer.new()
 	bg.layer = -1
@@ -88,12 +87,13 @@ func _ready() -> void:
 
 	hud = Hud.new()
 	hud.restart_requested.connect(_restart)
-	hud.quit_requested.connect(get_tree().quit)
+	hud.menu_requested.connect(_go_to_menu)
 	add_child(hud)
 
 	pause_menu = PauseMenu.new()
 	pause_menu.opened.connect(hud.set_playing.bind(false))
 	pause_menu.resumed.connect(hud.set_playing.bind(true))
+	pause_menu.menu_requested.connect(_go_to_menu)
 	pause_menu.quit_requested.connect(get_tree().quit)
 	add_child(pause_menu)
 	_update_hud()
@@ -113,6 +113,7 @@ func _physics_process(delta: float) -> void:
 
 	for a in asteroids:
 		a.step(delta)
+	_collide_asteroids()
 	bullets.step(delta, asteroids)
 	lasers.step(delta, player, asteroids, fx)
 	if not missiles.step(delta, asteroids, fx).is_empty():
@@ -146,6 +147,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _restart() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+
+func _go_to_menu() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file(MainMenu.SCENE)
 
 
 # --- Canhões ----------------------------------------------------------------
@@ -200,19 +206,26 @@ func _spawn_asteroids(delta: float) -> void:
 	a.velocity = heading * speed
 	a.angular_velocity = randf_range(-0.8, 0.8) / sqrt(n)
 	a.rotation = randf() * TAU
-	a.z_index = 0
 	add_child(a)
 	asteroids.append(a)
 
 
-## Tamanhos pequenos são mais comuns; o máximo cresce com o tempo e com o
-## poder de fogo (número de canhões, já que o casco não atira).
+## Tamanhos pequenos são mais comuns (mínimo Asteroid.MIN_SIZE); o máximo
+## cresce com o tempo e com o poder de fogo (número de canhões, já que o
+## casco não atira).
 func _roll_asteroid_size() -> int:
 	var cannons := 0
 	for n in player.weapon_counts().values():
 		cannons += n
-	var max_n := clampi(3 + int(elapsed / 10.0) + int(cannons * 1.5), 3, 40)
-	return 1 + int(pow(randf(), 1.7) * max_n)
+	var max_n := clampi(3 + int(elapsed / 10.0) + int(cannons * 1.5), Asteroid.MIN_SIZE, 40)
+	return Asteroid.MIN_SIZE + int(pow(randf(), 1.7) * (max_n - Asteroid.MIN_SIZE + 1))
+
+
+## Batidas entre asteroides (cada par uma vez por frame).
+func _collide_asteroids() -> void:
+	for i in asteroids.size():
+		for j in range(i + 1, asteroids.size()):
+			asteroids[i].collide_with(asteroids[j])
 
 
 ## Asteroide destruído pelos canhões: pontos, progresso de canhão e minério.
@@ -309,15 +322,15 @@ func _split_into_pieces(keys: Array) -> Array:
 ## A célula com menos vizinhos ainda livres (desempate aleatório).
 func _most_isolated(candidates: Array, left: Dictionary) -> Vector2i:
 	var best: Vector2i = candidates[0]
-	var best_score := INF
+	var best_rank := INF
 	for h in candidates:
 		var free := 0
 		for d in Hex.DIRS:
 			if left.has(h + d):
 				free += 1
-		var score := free + randf() * 0.5
-		if score < best_score:
-			best_score = score
+		var rank := free + randf() * 0.5
+		if rank < best_rank:
+			best_rank = rank
 			best = h
 	return best
 
@@ -328,16 +341,13 @@ func _add_ore(ore: Ore) -> void:
 	ores.append(ore)
 
 
-## Limita os minérios soltos: remove os comuns mais antigos primeiro
-## (os de canhão só saem se não houver mais nenhum comum).
+## Limita os minérios soltos: remove os mais antigos, preferindo os sem
+## canhão. O pedaço que está sendo arrastado nunca sai.
 func _trim_ores() -> void:
 	while ores.size() > MAX_ORES:
-		var victim: Ore = ores[0] if not ores[0].dragged else ores[1]
-		for ore in ores:
-			if not ore.has_special() and not ore.dragged:
-				victim = ore
-				break
-		_remove_ore(victim)
+		var loose := ores.filter(func(o): return not o.dragged)
+		var plain := loose.filter(func(o): return not o.has_special())
+		_remove_ore(plain[0] if not plain.is_empty() else loose[0])
 
 
 ## Contato célula a célula: cada célula de asteroide que encosta na nave
@@ -365,9 +375,14 @@ func _check_player_collisions() -> void:
 			for h in spent:
 				fx.burst(a.cell_global(h), a.base_color, 5, 110.0)
 			for piece in a.remove_cells(spent):
-				add_child(piece)
-				asteroids.append(piece)
-			if a.cells.is_empty():
+				if piece.size < Asteroid.MIN_SIZE:
+					_crumble(piece)
+					piece.free()
+				else:
+					add_child(piece)
+					asteroids.append(piece)
+			if a.cells.size() < Asteroid.MIN_SIZE:
+				_crumble(a)
 				asteroids.erase(a)
 				a.queue_free()
 		if core_hit:
@@ -387,6 +402,12 @@ func _check_player_collisions() -> void:
 		return
 	for piece in player.settle_damage():
 		_detach_from_ship(piece)
+
+
+## Asteroide pequeno demais (menos de MIN_SIZE células) vira poeira.
+func _crumble(a: Asteroid) -> void:
+	for h in a.cells:
+		fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 6, 90.0)
 
 
 ## Parte da nave que perdeu a ligação com o núcleo: vira um pedaço solto,
@@ -450,8 +471,8 @@ func _despawn_far_objects() -> void:
 
 # --- Câmera / HUD -----------------------------------------------------------
 
-## Os canhões só miram no que aparece na tela: o alcance deles é maior
-## que a área visível, e asteroides sumiam sem o jogador chegar a vê-los.
+## Os canhões só miram no que aparece na tela: o alcance deles é maior que
+## a área visível, e o jogador precisa ver o asteroide antes dele ser destruído.
 func _asteroids_on_screen() -> Array[Asteroid]:
 	var half := get_viewport_rect().size / camera.zoom * 0.5
 	var view := Rect2(camera.get_screen_center_position() - half, half * 2.0)
@@ -502,23 +523,9 @@ func _on_core_destroyed() -> void:
 	var new_record := score > best_score
 	if new_record:
 		best_score = score
-		_save_best(best_score)
+		SaveData.save_best_score(best_score)
 	hud.show_game_over({
 		"score": score, "best": best_score, "new_record": new_record,
 		"time": elapsed, "max_cells": max_cells,
 		"collected": collected, "destroyed": destroyed,
 	})
-
-
-func _load_best() -> int:
-	var cfg := ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
-		return 0
-	return int(cfg.get_value("stats", "best_score", 0))
-
-
-func _save_best(value: int) -> void:
-	var cfg := ConfigFile.new()
-	cfg.load(SAVE_PATH)
-	cfg.set_value("stats", "best_score", value)
-	cfg.save(SAVE_PATH)

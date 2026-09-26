@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dlt774oijd5d1"
-path="res://.godot/imported/Rajdhani-SemiBold.ttf-7fc35540c1b0b909935f8b2ef2c21933.fontdata"
+uid="uid://pkcj7phhcy0o"
+path="res://.godot/imported/Hexagon.otf-1910561f310c2a4ffb33f302444407ad.fontdata"
 
 [deps]
 
-source_file="res://fonts/Rajdhani-SemiBold.ttf"
-dest_files=["res://.godot/imported/Rajdhani-SemiBold.ttf-7fc35540c1b0b909935f8b2ef2c21933.fontdata"]
+source_file="res://fonts/Hexagon.otf"
+dest_files=["res://.godot/imported/Hexagon.otf-1910561f310c2a4ffb33f302444407ad.fontdata"]
 
 [params]
 

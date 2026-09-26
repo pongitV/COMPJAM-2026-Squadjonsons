@@ -1,6 +1,6 @@
 class_name Lasers
 extends Node2D
-## Raios dos canhões laser: saem da célula para fora da nave por
+## Raios dos canhões laser: saem da ponta do cano para fora da nave por
 ## LASER_DURATION segundos, acompanhando a nave, com dano contínuo.
 
 ## Célula do jogador (Vector2i) -> segundos restantes de raio.

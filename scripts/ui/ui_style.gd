@@ -14,12 +14,25 @@ const PANEL_BG := Color(0.02, 0.05, 0.1, 0.8)
 ## Tipos de fonte aceitos por label().
 enum { BODY, CAPTION, DISPLAY }
 
-## Orbitron (títulos, números, legendas) e Rajdhani (texto corrido).
-## Ambas SIL Open Font License, ver fonts/*-OFL.txt.
+## Hexagon é a fonte do jogo (CC BY-NC-SA 3.0, ver fonts/Hexagon-*.txt).
+## Ela só tem letras sem acento: os textos passam por plain() antes de
+## aparecer, e números/pontuação saem da Orbitron leve (SIL OFL), a reserva.
+const HEXAGON := preload("res://fonts/Hexagon.otf")
 const ORBITRON := preload("res://fonts/Orbitron.ttf")
-const RAJDHANI := preload("res://fonts/Rajdhani-SemiBold.ttf")
-const RAJDHANI_BOLD := preload("res://fonts/Rajdhani-Bold.ttf")
+const _ACCENTS := {
+	"á": "a", "à": "a", "â": "a", "ã": "a", "ä": "a",
+	"é": "e", "è": "e", "ê": "e", "ë": "e",
+	"í": "i", "ì": "i", "î": "i", "ï": "i",
+	"ó": "o", "ò": "o", "ô": "o", "õ": "o", "ö": "o",
+	"ú": "u", "ù": "u", "û": "u", "ü": "u", "ç": "c",
+	"Á": "A", "À": "A", "Â": "A", "Ã": "A", "Ä": "A",
+	"É": "E", "È": "E", "Ê": "E", "Ë": "E",
+	"Í": "I", "Ì": "I", "Î": "I", "Ï": "I",
+	"Ó": "O", "Ò": "O", "Ô": "O", "Õ": "O", "Ö": "O",
+	"Ú": "U", "Ù": "U", "Û": "U", "Ü": "U", "Ç": "C",
+}
 
+static var _body_font: Font
 static var _display_font: Font
 static var _caption_font: Font
 static var _theme: Theme
@@ -27,29 +40,43 @@ static var _theme: Theme
 
 ## Texto corrido: regras, descrições, teclas.
 static func font() -> Font:
-	return RAJDHANI
+	if _body_font == null:
+		_body_font = _hexagon(0.0, 0, 400)
+	return _body_font
 
 
-## Títulos, números do HUD, botões e textos flutuantes.
+## Títulos, números do HUD, botões e textos flutuantes (traço mais grosso).
 static func display_font() -> Font:
 	if _display_font == null:
-		_display_font = _orbitron(800, 1)
+		_display_font = _hexagon(0.9, 1, 700)
 	return _display_font
 
 
-## Legendas em caixa alta, com espaçamento largo.
+## Legendas, com espaçamento largo.
 static func caption_font() -> Font:
 	if _caption_font == null:
-		_caption_font = _orbitron(600, 2)
+		_caption_font = _hexagon(0.4, 3, 500)
 	return _caption_font
 
 
-static func _orbitron(weight: int, spacing: int) -> Font:
-	var f := FontVariation.new()
-	f.base_font = ORBITRON
+## Texto sem acentos (a Hexagon não tem letras acentuadas).
+static func plain(text: String) -> String:
+	var out := ""
+	for c in text:
+		out += _ACCENTS.get(c, c)
+	return out
+
+
+static func _hexagon(embolden: float, spacing: int, fallback_weight: int) -> Font:
+	var reserve := FontVariation.new()
+	reserve.base_font = ORBITRON
 	var wght := TextServerManager.get_primary_interface().name_to_tag("wght")
-	f.variation_opentype = {wght: weight}
+	reserve.variation_opentype = {wght: fallback_weight}
+	var f := FontVariation.new()
+	f.base_font = HEXAGON
+	f.variation_embolden = embolden
 	f.spacing_glyph = spacing
+	f.fallbacks = [reserve]
 	return f
 
 
@@ -72,7 +99,7 @@ static func panel(accent: Color = CYAN, bg: Color = PANEL_BG, cut: int = 10) -> 
 
 static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY) -> Label:
 	var l := Label.new()
-	l.text = text
+	l.text = plain(text)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	match kind:
@@ -103,8 +130,8 @@ static func key_chip(text: String) -> PanelContainer:
 	if text in ARROWS:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
 	else:
-		var l := label(text, 15, TEXT)
-		l.add_theme_font_override("font", RAJDHANI_BOLD)
+		var l := label(text, 12, TEXT)
+		l.add_theme_font_override("font", display_font())
 		chip.add_child(l)
 	return chip
 
@@ -131,7 +158,7 @@ class ArrowGlyph extends Control:
 
 static func button(text: String) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = plain(text)
 	b.custom_minimum_size = Vector2(240, 40)
 	b.focus_mode = Control.FOCUS_ALL
 	# Hover e foco de teclado ficam sempre no mesmo botão.

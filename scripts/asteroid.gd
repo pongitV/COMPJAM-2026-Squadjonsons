@@ -1,15 +1,20 @@
 class_name Asteroid
 extends HexBody
-## Aglomerado aleatório de n células. É destruído após ceil(n^(3/2)) disparos.
-## Ao encostar na nave, cada célula dele destrói CELL_CHARGES células da nave
-## (as que tocar) e depois some; se o asteroide se partir, os pedaços viram
-## asteroides separados.
+## Aglomerado aleatório de n células (n >= MIN_SIZE). É destruído após
+## ceil(n^(3/2)) disparos. Ao encostar na nave, cada célula dele destrói
+## CELL_CHARGES células da nave (as que tocar) e depois some; se o asteroide
+## se partir, os pedaços viram asteroides separados. Asteroides batem entre si.
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
 ## Cor média da arte do asteroide (base do tingimento de dano e dos efeitos).
 const ART_COLOR := Color("#756348")
 ## Quantas células da nave cada célula do asteroide destrói antes de sumir.
 const CELL_CHARGES := 2
+## Menor asteroide possível; partes menores que isso se desfazem.
+const MIN_SIZE := 3
+## Elasticidade da batida entre asteroides (0 = gruda, 1 = quique perfeito).
+const BOUNCE := 0.6
+const MAX_SPIN := 3.0
 
 var size := 1
 var max_hp := 1
@@ -115,6 +120,69 @@ func _resize(hp_ratio: float) -> void:
 	max_hp = ceili(pow(size, 1.5))
 	hp = maxi(1, ceili(hp_ratio * max_hp))
 	_update_tint()
+
+
+## Batida com outro asteroide: se alguma célula de um encosta numa do outro,
+## aplica um impulso no ponto de contato (massa = número de células) e afasta
+## os dois para não ficarem sobrepostos.
+func collide_with(other: Asteroid) -> void:
+	var reach := bound_radius + other.bound_radius
+	if global_position.distance_squared_to(other.global_position) > reach * reach:
+		return
+	# Contato: média dos pontos e das normais entre células encostadas.
+	var small: Asteroid = self if cells.size() <= other.cells.size() else other
+	var big: Asteroid = other if small == self else self
+	var contact := Vector2.ZERO
+	var normal := Vector2.ZERO
+	var depth := 0.0
+	var touching := 0
+	for h in small.cells:
+		var p := small.cell_global(h)
+		var hit := big.find_cell_near(p, CONTACT_DIST)
+		if hit == NO_CELL:
+			continue
+		var q := big.cell_global(hit)
+		contact += (p + q) * 0.5
+		normal += p - q
+		depth = maxf(depth, CONTACT_DIST - p.distance_to(q))
+		touching += 1
+	if touching == 0:
+		return
+	contact /= touching
+	normal = normal.normalized()
+	if normal == Vector2.ZERO:
+		normal = (small.global_position - big.global_position).normalized()
+	# A normal aponta de `big` para `small`.
+	var inv_small := 1.0 / small.cells.size()
+	var inv_big := 1.0 / big.cells.size()
+	var r_small := contact - small.global_position
+	var r_big := contact - big.global_position
+	var inv_i_small := 1.0 / small._inertia()
+	var inv_i_big := 1.0 / big._inertia()
+	var v_small := small.velocity + Vector2(-small.angular_velocity * r_small.y, small.angular_velocity * r_small.x)
+	var v_big := big.velocity + Vector2(-big.angular_velocity * r_big.y, big.angular_velocity * r_big.x)
+	var approach := (v_small - v_big).dot(normal)
+	if approach < 0.0:
+		var rn_small := r_small.cross(normal)
+		var rn_big := r_big.cross(normal)
+		var j := -(1.0 + BOUNCE) * approach / (inv_small + inv_big
+			+ rn_small * rn_small * inv_i_small + rn_big * rn_big * inv_i_big)
+		small.velocity += normal * j * inv_small
+		big.velocity -= normal * j * inv_big
+		small.angular_velocity = clampf(small.angular_velocity + rn_small * j * inv_i_small, -MAX_SPIN, MAX_SPIN)
+		big.angular_velocity = clampf(big.angular_velocity - rn_big * j * inv_i_big, -MAX_SPIN, MAX_SPIN)
+	# Separa proporcionalmente à massa (o mais leve anda mais).
+	var push := normal * depth * 0.8 / (inv_small + inv_big)
+	small.position += push * inv_small
+	big.position -= push * inv_big
+
+
+## Momento de inércia (células de massa 1 distribuídas em volta do centro).
+func _inertia() -> float:
+	var sum := 0.0
+	for h in cells:
+		sum += cell_local(h).length_squared() + Hex.SIZE * Hex.SIZE * 0.5
+	return sum
 
 
 ## A cor de dano/flash é igual no asteroide inteiro, então vira um

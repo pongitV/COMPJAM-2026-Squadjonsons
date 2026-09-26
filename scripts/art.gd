@@ -64,6 +64,16 @@ static func cell_uv(kind: int) -> Rect2:
 	return _cell_uv[kind]
 
 
+## Recorte do atlas com a flor de um tipo de célula (ícones da interface).
+static func cell_icon(kind: int) -> AtlasTexture:
+	var atlas := cell_atlas()
+	var uv := cell_uv(kind)
+	var icon := AtlasTexture.new()
+	icon.atlas = atlas
+	icon.region = Rect2(uv.position * atlas.get_size(), uv.size * atlas.get_size())
+	return icon
+
+
 ## Tamanho da flor no jogo (px).
 static func cell_size(kind: int) -> Vector2:
 	cell_atlas()

@@ -45,12 +45,12 @@ func set_value(v: int) -> void:
 
 ## Texto livre (sem animação de contagem), ex.: o cronômetro.
 func set_text(text: String) -> void:
-	_value_label.text = text
+	_value_label.text = UIStyle.plain(text)
 
 
 func set_sub(text: String) -> void:
 	_sub_label.visible = text != ""
-	_sub_label.text = text
+	_sub_label.text = UIStyle.plain(text)
 
 
 func _process(delta: float) -> void:

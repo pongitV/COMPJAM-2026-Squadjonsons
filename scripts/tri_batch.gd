@@ -1,6 +1,6 @@
 class_name TriBatch
 extends RefCounted
-## Acumula formas simples (discos, retângulos, quadrados com textura) numa
+## Acumula formas simples (retângulos, quadrados com textura) numa
 ## única lista de triângulos, desenhada com uma só chamada em vez de uma por
 ## forma. Num mesmo lote, use só formas com textura (add_quad) ou só sem.
 
@@ -19,18 +19,6 @@ func clear() -> void:
 
 func is_empty() -> bool:
 	return points.is_empty()
-
-
-func add_disc(center: Vector2, radius: float, color: Color, sides: int = 8) -> void:
-	var base := points.size()
-	points.append(center)
-	colors.append(color)
-	for k in sides:
-		points.append(center + Vector2.from_angle(k * TAU / sides) * radius)
-		colors.append(color)
-		indices.append(base)
-		indices.append(base + 1 + k)
-		indices.append(base + 1 + (k + 1) % sides)
 
 
 func add_rect(rect: Rect2, color: Color) -> void:

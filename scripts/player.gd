@@ -34,7 +34,7 @@ var _cooldowns := {}
 var _cannon_cells: Array[Vector2i] = []
 var _counts := {}
 
-# Buffers reaproveitados a cada frame para desenhar os canhões.
+# Buffer reaproveitado a cada frame para desenhar os canhões.
 var _cannon_sprites := TriBatch.new()
 
 
@@ -66,7 +66,6 @@ func step(delta: float) -> void:
 
 	# Segurando "rotate", a nave gira em torno do núcleo até a frente
 	# (eixo +X local) apontar para a mira.
-	InputActions.ensure_defaults()
 	turning = Input.is_action_pressed("rotate")
 	if turning:
 		var diff := wrapf((aim - global_position).angle() - rotation, -PI, PI)
@@ -110,6 +109,11 @@ func barrel_dir(h: Vector2i) -> Vector2:
 		if target != null:
 			d = _lead(cell_global(h), target, Weapons.PROJECTILE_SPEED[w]) - cell_global(h)
 	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT.rotated(rotation)
+
+
+## Ponta do cano do canhão da célula (de onde saem tiros e o laser).
+func muzzle(h: Vector2i) -> Vector2:
+	return cell_global(h) + barrel_dir(h) * Art.muzzle_length(weapon_at(h))
 
 
 ## Alvo atual do canhão daquela célula (null se não houver).
@@ -367,11 +371,6 @@ func _remove_cell(h: Vector2i) -> void:
 	_cooldowns.erase(h)
 
 
-## Ponta do cano do canhão da célula (de onde saem tiros e o laser).
-func muzzle(h: Vector2i) -> Vector2:
-	return cell_global(h) + barrel_dir(h) * Art.muzzle_length(weapon_at(h))
-
-
 ## O núcleo usa a arte cinza com centro preto, tingida de dourado.
 func cell_color(h: Vector2i) -> Color:
 	var base := CORE_COLOR.lightened(0.3) if h == CORE else Color.WHITE
@@ -419,8 +418,7 @@ func _draw_cannons() -> void:
 			c + (size - pivot).rotated(angle),
 			c + (Vector2(0.0, size.y) - pivot).rotated(angle),
 		]
-		@warning_ignore("shadowed_variable_base_class")
-		var ready: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
-		var shade := (0.6 + 0.4 * ready) if is_armed(h) else 0.35
+		var charged: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
+		var shade := (0.6 + 0.4 * charged) if is_armed(h) else 0.35
 		_cannon_sprites.add_quad(corners, Art.cannon_uv(w), Color(shade, shade, shade))
 	_cannon_sprites.draw(get_canvas_item(), Art.cannon_atlas())

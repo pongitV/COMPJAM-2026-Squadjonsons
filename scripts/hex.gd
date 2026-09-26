@@ -70,8 +70,8 @@ static func components(keys: Array) -> Array:
 	return groups
 
 
-## Vértices de um hexágono centrado na origem (levemente encolhido para
-## deixar a grade visível).
+## Vértices de um hexágono centrado na origem, levemente encolhido (usado
+## no encaixe fantasma do raio trator).
 static func corners() -> PackedVector2Array:
 	if _corners.is_empty():
 		for i in 6:

@@ -4,7 +4,7 @@ extends CanvasLayer
 ## vinheta de dano, mira hexagonal e tela de game over.
 
 signal restart_requested
-signal quit_requested
+signal menu_requested
 
 var score_card: StatCard
 var cells_card: StatCard
@@ -163,13 +163,13 @@ func show_game_over(stats: Dictionary) -> void:
 
 	var restart := UIStyle.button("JOGAR NOVAMENTE   [R]")
 	restart.pressed.connect(restart_requested.emit)
-	var quit := UIStyle.button("SAIR")
-	quit.pressed.connect(quit_requested.emit)
+	var menu := UIStyle.button("MENU PRINCIPAL")
+	menu.pressed.connect(menu_requested.emit)
 	col.add_child(HSeparator.new())
 	col.add_child(restart)
-	col.add_child(quit)
+	col.add_child(menu)
 	restart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 	overlay.modulate.a = 0.0
 	var fade := overlay.create_tween()

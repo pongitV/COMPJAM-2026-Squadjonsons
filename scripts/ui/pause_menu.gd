@@ -1,10 +1,12 @@
 class_name PauseMenu
 extends CanvasLayer
-## Menu de pausa (ESC): continuar, info (controles e regras) e sair.
+## Menu de pausa (ESC): continuar, info (controles e regras), voltar ao menu
+## principal e sair.
 ## Roda com a árvore pausada (PROCESS_MODE_ALWAYS).
 
 signal opened
 signal resumed
+signal menu_requested
 signal quit_requested
 
 ## Desligado no game over.
@@ -24,7 +26,6 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	InputActions.ensure_defaults()
 	_root = Control.new()
 	_root.theme = UIStyle.theme()
 	add_child(_root)
@@ -40,7 +41,10 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_main_panel = _build_main()
-	_info_panel = _build_info()
+	var manual := Manual.build()
+	_info_panel = manual[0]
+	_info_back_button = manual[1]
+	_info_back_button.pressed.connect(_show_main)
 	center.add_child(_main_panel)
 	center.add_child(_info_panel)
 
@@ -83,6 +87,8 @@ func resume() -> void:
 func _show_main() -> void:
 	_info_panel.visible = false
 	_main_panel.visible = true
+	# O manual pode ter reduzido o container que os dois painéis dividem.
+	(_main_panel.get_parent() as Control).scale = Vector2.ONE
 	_pop_in(_main_panel)
 	_resume_button.grab_focus()
 
@@ -90,7 +96,7 @@ func _show_main() -> void:
 func _show_info() -> void:
 	_main_panel.visible = false
 	_info_panel.visible = true
-	_pop_in(_info_panel)
+	Manual.fit(_info_panel)
 	_info_back_button.grab_focus()
 
 
@@ -101,128 +107,19 @@ func _pop_in(panel: Control) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-func _make_panel(accent: Color) -> Array:
-	var panel := PanelContainer.new()
-	var style := UIStyle.panel(accent, UIStyle.PANEL_BG, 16)
-	style.set_content_margin_all(24)
-	panel.add_theme_stylebox_override("panel", style)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 10)
-	panel.add_child(col)
-	return [panel, col]
-
-
-func _title(col: VBoxContainer, caption: String, text: String, color: Color) -> void:
-	var head := HBoxContainer.new()
-	head.alignment = BoxContainer.ALIGNMENT_CENTER
-	head.add_theme_constant_override("separation", 12)
-	head.add_child(HexIcon.new(color, 28))
-	var titles := VBoxContainer.new()
-	titles.add_theme_constant_override("separation", 2)
-	titles.add_child(UIStyle.label(caption, 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	titles.add_child(UIStyle.label(text, 22, color, UIStyle.DISPLAY))
-	head.add_child(titles)
-	col.add_child(head)
-	col.add_child(HSeparator.new())
-
-
 func _build_main() -> Control:
-	var parts := _make_panel(UIStyle.CYAN)
+	var parts := Manual.make_panel(UIStyle.CYAN)
 	var col: VBoxContainer = parts[1]
-	_title(col, "HEX ASTEROIDS", "PAUSADO", UIStyle.CYAN)
+	Manual.title(col, "HEX ASTEROIDS", "PAUSADO", UIStyle.CYAN)
 
 	_resume_button = UIStyle.button("CONTINUAR")
 	_resume_button.pressed.connect(resume)
 	var info := UIStyle.button("INFO")
 	info.pressed.connect(_show_info)
+	var menu := UIStyle.button("MENU PRINCIPAL")
+	menu.pressed.connect(menu_requested.emit)
 	var quit := UIStyle.button("SAIR DO JOGO")
 	quit.pressed.connect(quit_requested.emit)
-	for b in [_resume_button, info, quit]:
+	for b in [_resume_button, info, menu, quit]:
 		col.add_child(b)
 	return parts[0]
-
-
-func _build_info() -> Control:
-	var parts := _make_panel(UIStyle.GREEN)
-	var col: VBoxContainer = parts[1]
-	_title(col, "INFO", "MANUAL", UIStyle.GREEN)
-
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 24)
-	col.add_child(columns)
-	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 10)
-	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 10)
-	columns.add_child(left)
-	columns.add_child(VSeparator.new())
-	columns.add_child(right)
-
-	# Coluna esquerda: controles e regras gerais.
-	left.add_child(UIStyle.label("CONTROLES", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 16)
-	grid.add_theme_constant_override("v_separation", 8)
-	left.add_child(grid)
-	var controls := [
-		[["W", "A", "S", "D"], "Mover"],
-		[["UP", "LEFT", "DOWN", "RIGHT"], "Mover (alternativo)"],
-		[["Clique esquerdo"], "Arrastar pedaço até a nave"],
-		[["Roda do mouse"], "Girar o pedaço arrastado"],
-		[["Clique direito"], "Girar a nave para o mouse (segure)"],
-		[["ESC"], "Pausar / voltar"],
-		[["R"], "Reiniciar (após o game over)"],
-	]
-	for c in controls:
-		var keys := HBoxContainer.new()
-		keys.add_theme_constant_override("separation", 6)
-		for k in c[0]:
-			keys.add_child(UIStyle.key_chip(k))
-		grid.add_child(keys)
-		var action := UIStyle.label(c[1], 17)
-		action.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		grid.add_child(action)
-
-	left.add_child(HSeparator.new())
-	left.add_child(UIStyle.label("COMO JOGAR", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	_rule(left, UIStyle.GOLD, "", "O hexágono dourado é o seu núcleo. Se ele for destruído, é fim de jogo.")
-	_rule(left, Color(0.7, 0.6, 0.5), "", "Um asteroide de N hexágonos aguenta N^1,5 de dano. Cada hexágono dele que encosta na nave destrói 2 hexágonos seus (os que tocar) e some. Partes que se soltarem do núcleo ficam flutuando e podem ser encaixadas de novo.")
-	_rule(left, UIStyle.GREEN, "", "Asteroides destruídos se partem em pedaços de minério (20% se perde). Arraste um pedaço (dentro do raio trator) até a nave e solte onde o encaixe aparecer. O verde vira casco; o colorido vira um canhão.")
-	_rule(left, UIStyle.CYAN, "", "Os canhões atiram sozinhos, cada um no asteroide mais próximo dele.")
-
-	# Coluna direita: canhões.
-	right.add_child(UIStyle.label("CANHÕES", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	_rule(right, Weapons.color(Weapons.COMMON), "COMUM",
-		"Tiro único no asteroide mais próximo. Você ganha 1 a cada %d asteroides destruídos. Fica sempre na borda da nave." % Weapons.ASTEROIDS_PER_COMMON)
-	_rule(right, Weapons.color(Weapons.SHOTGUN), "SHOTGUN", "6 tiros em leque no asteroide mais próximo, de alcance curto.")
-	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Dispara sozinho quando um asteroide cruza sua linha: raio para fora da nave por 3 s. Gire a nave (clique direito) para mirar.")
-	_rule(right, Weapons.color(Weapons.BOMB), "BOMBA", "Míssil lento lançado no asteroide mais próximo, com dano em área.")
-	_rule(right, Weapons.color(Weapons.NONE), "CASCO", "Hexágono sem canhão. Não atira, mas protege o núcleo.")
-
-	_info_back_button = UIStyle.button("VOLTAR")
-	_info_back_button.pressed.connect(_show_main)
-	_info_back_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	col.add_child(HSeparator.new())
-	col.add_child(_info_back_button)
-	return parts[0]
-
-
-## Linha do manual: hexágono colorido + título opcional + descrição.
-func _rule(parent: VBoxContainer, color: Color, title: String, text: String) -> void:
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 10)
-	var icon := HexIcon.new(color, 16)
-	icon.spin_speed = 0.0
-	icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	line.add_child(icon)
-	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 0)
-	if title != "":
-		body.add_child(UIStyle.label(title, 12, color, UIStyle.DISPLAY))
-	var desc := UIStyle.label(text, 16, UIStyle.TEXT)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.custom_minimum_size.x = 340
-	body.add_child(desc)
-	line.add_child(body)
-	parent.add_child(line)

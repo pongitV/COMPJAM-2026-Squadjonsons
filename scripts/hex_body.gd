@@ -21,8 +21,7 @@ var flash := 0.0
 
 # Malha em cache: cada célula é um quadrado com a arte da flor (do atlas
 # Art), e todas viram UMA lista de triângulos, recalculada só quando a forma
-# ou as cores mudam. Desenhar célula por célula custava milhares de draw
-# calls por frame.
+# ou as cores mudam.
 var _geometry_dirty := true
 var _colors_dirty := true
 var _cell_order: Array = []
