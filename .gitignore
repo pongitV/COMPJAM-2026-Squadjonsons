@@ -2,3 +2,6 @@
 .godot/
 /android/
 *.tmp
+
+# Outro projeto Godot, mantido fora deste repositorio
+CaraDePaisagem/

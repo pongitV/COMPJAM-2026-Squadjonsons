@@ -1,0 +1,25 @@
+SPRITES DA INTERFACE
+====================
+
+Coloque aqui um PNG com o nome de um slot (ex.: button_normal.png) e ele
+substitui o placeholder desenhado em codigo. Sem o arquivo, o jogo continua
+usando o placeholder. A lista completa de slots (com o que cada um e) fica em
+scripts/ui/ui_skin.gd, na constante SLOTS.
+
+Paineis e botoes (card*, panel*, button_*, key) sao esticados em 9-slice:
+os 12 px de cada canto ficam intactos e o meio estica (a margem muda por slot
+em UISkin.SLICE). Icones, pips, mira e seta sao encaixados no tamanho do
+placeholder mantendo a proporcao; desenhe-os quadrados.
+
+Tamanhos de referencia (px na tela):
+  icon_score / icon_cells / icon_time / icon_record    30 x 30
+  icon_pause / icon_manual                              28 x 28
+  icon_cannon_*                                         18 x 18
+  pip_full / pip_empty                                  14 x 14
+  reticle                                               42 x 42
+  key_arrow (apontando para a direita)                  12 x 18
+  title_logo                                            tamanho real da imagem
+  damage_vignette / backdrop_*                          esticados na tela toda
+
+Icones, pips, mira e seta podem ser exportados com o dobro do tamanho (a
+imagem e reduzida para caber). Paineis e botoes aparecem em tamanho real.

@@ -48,10 +48,10 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 10)
 	bar.add_child(row)
-	score_card = StatCard.new("PONTOS", UIStyle.GOLD)
-	cells_card = StatCard.new("HEXÁGONOS", UIStyle.CYAN)
+	score_card = StatCard.new("PONTOS", UIStyle.GOLD, "score")
+	cells_card = StatCard.new("HEXÁGONOS", UIStyle.CYAN, "cells")
 	cannon_card = CannonCard.new()
-	time_card = StatCard.new("TEMPO", UIStyle.TEXT_DIM)
+	time_card = StatCard.new("TEMPO", UIStyle.TEXT_DIM, "time")
 	time_card.icon.spin_speed = 1.2
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -65,7 +65,6 @@ func _ready() -> void:
 
 	_reticle = Reticle.new()
 	_root.add_child(_reticle)
-	_reticle.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	set_playing(true)
 
 
@@ -107,8 +106,9 @@ func damage_flash(strength: float) -> void:
 func show_game_over(stats: Dictionary) -> void:
 	set_playing(false)
 	_hint.visible = false
-	var overlay := ColorRect.new()
-	overlay.color = Color(0.0, 0.0, 0.02, 0.6)
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.0, 0.02, 0.6)
+	var overlay := UISkin.replace("backdrop_game_over", dim, true)
 	_root.add_child(overlay)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -117,7 +117,7 @@ func show_game_over(stats: Dictionary) -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	var panel := PanelContainer.new()
-	var style := UIStyle.panel(UIStyle.RED, UIStyle.PANEL_BG, 16)
+	var style := UIStyle.frame(["panel_game_over", "panel"], UIStyle.RED, UIStyle.PANEL_BG, 16)
 	style.set_content_margin_all(24)
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
@@ -178,16 +178,20 @@ func show_game_over(stats: Dictionary) -> void:
 	fade.tween_callback(restart.grab_focus)
 
 
+## Sprite "damage_vignette" esticado na tela; placeholder: gradiente radial.
 func _build_vignette() -> void:
-	var grad := Gradient.new()
-	grad.set_color(0, Color(UIStyle.RED, 0.0))
-	grad.set_color(1, Color(UIStyle.RED, 0.55))
-	grad.add_point(0.6, Color(UIStyle.RED, 0.0))
-	var tex := GradientTexture2D.new()
-	tex.gradient = grad
-	tex.fill = GradientTexture2D.FILL_RADIAL
-	tex.fill_from = Vector2(0.5, 0.5)
-	tex.fill_to = Vector2(1.0, 1.0)
+	var tex := UISkin.texture("damage_vignette")
+	if tex == null:
+		var grad := Gradient.new()
+		grad.set_color(0, Color(UIStyle.RED, 0.0))
+		grad.set_color(1, Color(UIStyle.RED, 0.55))
+		grad.add_point(0.6, Color(UIStyle.RED, 0.0))
+		var gradient_tex := GradientTexture2D.new()
+		gradient_tex.gradient = grad
+		gradient_tex.fill = GradientTexture2D.FILL_RADIAL
+		gradient_tex.fill_from = Vector2(0.5, 0.5)
+		gradient_tex.fill_to = Vector2(1.0, 1.0)
+		tex = gradient_tex
 	_vignette = TextureRect.new()
 	_vignette.texture = tex
 	_vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -198,25 +202,29 @@ func _build_vignette() -> void:
 	_vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-## Mira hexagonal que segue o mouse.
-class Reticle extends Control:
+## Mira que segue o mouse (slot "reticle", centrado na ponta do mouse).
+## Placeholder: hexagono girando com tres tracos.
+class Reticle extends UISprite:
+	const SIZE := 42.0
 	var _t := 0.0
 
 	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		super("reticle", Vector2.ONE * SIZE)
+		size = custom_minimum_size
 
 	func _process(delta: float) -> void:
 		_t += delta
+		position = get_parent_control().get_local_mouse_position() - size * 0.5
 		queue_redraw()
 
-	func _draw() -> void:
-		var m := get_local_mouse_position()
+	func _draw_placeholder() -> void:
+		var m := size * 0.5
 		var r := 11.0
 		var pts := PackedVector2Array()
 		for i in 7:
 			pts.append(m + Vector2.from_angle(_t * 1.2 + i * TAU / 6.0) * r)
-		draw_polyline(pts, Color(UIStyle.CYAN, 0.9), 1.5, true)
+		draw_polyline(pts, Color(color, 0.9), 1.5, true)
 		for i in 3:
 			var d := Vector2.from_angle(-_t * 0.8 + i * TAU / 3.0)
-			draw_line(m + d * (r + 4.0), m + d * (r + 9.0), Color(UIStyle.CYAN, 0.6), 1.5, true)
+			draw_line(m + d * (r + 4.0), m + d * (r + 9.0), Color(color, 0.6), 1.5, true)
 		draw_circle(m, 2.0, UIStyle.GOLD)

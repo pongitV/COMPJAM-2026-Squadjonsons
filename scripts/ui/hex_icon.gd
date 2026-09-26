@@ -1,18 +1,17 @@
 class_name HexIcon
-extends Control
-## Icone hexagonal animado: gira devagar e da um "pulso" quando chutado.
+extends UISprite
+## Icone animado: da um "pulso" quando chutado. O placeholder e um hexagono
+## que gira devagar; um sprite proprio so pulsa (nao gira).
 
-var color := UIStyle.CYAN
 var spin_speed := 0.4
 var pulse := 0.0
 var _angle := randf() * TAU
 
 
-func _init(c: Color = UIStyle.CYAN, icon_size: float = 38.0) -> void:
+func _init(slot_name: String = "", c: Color = UIStyle.CYAN, icon_size: float = 38.0) -> void:
+	super(slot_name, Vector2(icon_size, icon_size))
 	color = c
-	custom_minimum_size = Vector2(icon_size, icon_size)
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func kick() -> void:
@@ -22,12 +21,13 @@ func kick() -> void:
 func _process(delta: float) -> void:
 	_angle += delta * (spin_speed + pulse * 7.0)
 	pulse = move_toward(pulse, 0.0, delta * 2.5)
+	sprite_scale = 1.0 + pulse * 0.25
 	queue_redraw()
 
 
-func _draw() -> void:
+func _draw_placeholder() -> void:
 	var c := size * 0.5
-	var r := minf(size.x, size.y) * 0.42 * (1.0 + pulse * 0.25)
+	var r := minf(size.x, size.y) * 0.42 * sprite_scale
 	var outer := _hex(c, r, _angle)
 	draw_colored_polygon(outer, Color(color, 0.15 + pulse * 0.45))
 	outer.append(outer[0])
