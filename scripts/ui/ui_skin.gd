@@ -20,7 +20,6 @@ const SLICE := {
 const SLOTS := {
 	# Paineis (9-slice)
 	"card": "Moldura padrao dos cards do HUD (usada se o card nao tiver a sua).",
-	"card_score": "Card de pontos (HUD).",
 	"card_cells": "Card de hexagonos (HUD).",
 	"card_time": "Card de tempo (HUD).",
 	"card_cannons": "Card de canhoes (HUD).",
@@ -37,7 +36,6 @@ const SLOTS := {
 	"button_pressed": "Botao apertado / aba ativa (sem ele: hover ou normal).",
 	"button_focus": "Destaque de foco do teclado, desenhado por cima do botao (sem ele: button_hover).",
 	# Icones (encaixados no tamanho do placeholder)
-	"icon_score": "Icone do card de pontos.",
 	"icon_cells": "Icone do card de hexagonos.",
 	"icon_time": "Icone do card de tempo.",
 	"icon_record": "Icone do card de recorde.",
@@ -51,6 +49,8 @@ const SLOTS := {
 	"pip_empty": "Hexagono apagado do progresso ate o proximo canhao.",
 	"pip_full": "Hexagono aceso do progresso ate o proximo canhao.",
 	"reticle": "Mira que segue o mouse durante o jogo (centro = ponta do mouse).",
+	"race_marker": "Marcador da nave na linha de chegada do rodape.",
+	"race_flag": "Bandeira de chegada no fim da linha do rodape (mastro embaixo a esquerda).",
 	# Imagens inteiras
 	"title_logo": "Logo do menu principal (substitui o texto HEXCORE).",
 	"damage_vignette": "Borda de dano que pisca na tela toda.",

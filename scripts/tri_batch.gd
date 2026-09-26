@@ -33,6 +33,23 @@ func add_rect(rect: Rect2, color: Color) -> void:
 		indices.append(base + i)
 
 
+## Risco de `from` ate `to` com a espessura dada; a cor vai de `from_color`
+## a `to_color` (ex.: cauda transparente). Sem textura.
+func add_streak(from: Vector2, to: Vector2, width: float, from_color: Color, to_color: Color) -> void:
+	var side := (to - from).orthogonal().normalized() * width * 0.5
+	var base := points.size()
+	points.append(from - side)
+	points.append(to - side)
+	points.append(to + side)
+	points.append(from + side)
+	colors.append(from_color)
+	colors.append(to_color)
+	colors.append(to_color)
+	colors.append(from_color)
+	for i in [0, 1, 2, 0, 2, 3]:
+		indices.append(base + i)
+
+
 ## Quadrilatero com textura: `corners` em sentido horario a partir do canto
 ## superior esquerdo da regiao `uv` do atlas.
 func add_quad(corners: Array, uv: Rect2, color: Color) -> void:

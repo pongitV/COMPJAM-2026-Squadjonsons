@@ -1,5 +1,7 @@
 extends Node2D
 ## Controlador principal: spawn, colisoes, camera e HUD.
+## A camera fica parada; so o fundo rola (TravelConfig), dando a impressao de
+## que a nave avanca. A nave se move livre, mas presa na area visivel.
 
 ## Aproxima a camera para as artes aparecerem maiores (1.0 = escala original).
 const ART_ZOOM := 1.2
@@ -9,6 +11,8 @@ const ART_ZOOM := 1.2
 @export var asteroid_config: AsteroidConfig = preload("res://config/asteroids.tres")
 ## Parametros dos canhoes (recarga, dano, alcance...).
 @export var cannon_config: CannonConfig = preload("res://config/cannons.tres")
+## Velocidade do fundo, efeitos de velocidade e duracao ate a chegada.
+@export var travel_config: TravelConfig = preload("res://config/travel.tres")
 
 var player: Player
 var bullets: Bullets
@@ -21,6 +25,7 @@ var music: AudioStreamPlayer
 var cannon_sfx: AudioStreamPlayer
 var laser_sfx: AudioStreamPlayer
 var starfield: Starfield
+var speed_fx: SpeedFx
 var hud: Hud
 var pause_menu: PauseMenu
 var asteroids: Array[Asteroid] = []
@@ -71,7 +76,13 @@ func _ready() -> void:
 	bg.layer = -1
 	add_child(bg)
 	starfield = Starfield.new()
+	starfield.configure(travel_config)
 	bg.add_child(starfield)
+
+	# Abaixo de tudo no mundo: os riscos saem de tras dos objetos.
+	speed_fx = SpeedFx.new()
+	speed_fx.config = travel_config
+	add_child(speed_fx)
 
 	player = Player.new()
 	player.z_index = 2
@@ -135,6 +146,7 @@ func _physics_process(delta: float) -> void:
 		elapsed += delta
 		player.aim = get_global_mouse_position()
 		player.step(delta)
+		_keep_player_on_screen()
 		# Tiro automatico: cada canhao mira no asteroide mais proximo dele.
 		player.update_targets(delta, _asteroids_on_screen())
 		for shot in player.fire():
@@ -156,6 +168,7 @@ func _physics_process(delta: float) -> void:
 	if not game_over:
 		_check_player_collisions()
 	_update_ores(delta)
+	_scroll_background(delta)
 	fx.step(delta)
 
 	_spawn_asteroids(delta)
@@ -245,8 +258,9 @@ func _spawn_asteroids(delta: float) -> void:
 	var a := Asteroid.new()
 	a.setup(n, _cfg.hp_scale(elapsed))
 
+	# Em volta da tela (a camera e fixa; a nave pode estar perto da borda).
 	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
-	a.position = player.global_position + Vector2.from_angle(randf() * TAU) * dist
+	a.position = camera.global_position + Vector2.from_angle(randf() * TAU) * dist
 	# Vai na direcao geral do jogador, com um desvio aleatorio.
 	var heading := (player.global_position - a.position).normalized() \
 		.rotated(randf_range(-_cfg.aim_spread, _cfg.aim_spread))
@@ -268,11 +282,9 @@ func _collide_asteroids() -> void:
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
 	if not game_over:
-		var points := _cfg.score_for(a.max_hp)
-		score += points
+		# A pontuacao conta por tras (game over e recorde), sem aparecer no HUD.
+		score += _cfg.score_for(a.max_hp)
 		destroyed += 1
-		hud.popup("+%s" % UIStyle.fmt_int(points), UIStyle.GOLD, _to_screen(a.global_position),
-			clampi(14 + (a.size >> 1), 14, 24))
 		if destroyed % Weapons.config.asteroids_per_common == 0:
 			_grant_common_cannon()
 	_break_into_ore(a)
@@ -525,15 +537,39 @@ func _view_radius() -> float:
 	return (get_viewport_rect().size / camera.zoom).length() * 0.5
 
 
+## A camera nao segue a nave: so afasta o zoom conforme ela cresce e treme.
 func _update_camera(delta: float) -> void:
-	# Afasta a camera conforme a nave cresce.
 	var target_zoom := clampf(260.0 / (player.bound_radius + 210.0), 0.3, 1.2) * ART_ZOOM
 	camera.zoom = camera.zoom.lerp(Vector2.ONE * target_zoom, 1.0 - exp(-2.0 * delta))
-	camera.global_position = camera.global_position.lerp(player.global_position, 1.0 - exp(-8.0 * delta))
 	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 	_shake = move_toward(_shake, 0.0, 40.0 * delta)
-	starfield.cam_pos = camera.global_position
+
+
+## O fundo rola no sentido contrario ao avanco; os efeitos acompanham a
+## velocidade (que cresce com o tempo, ver TravelConfig).
+func _scroll_background(delta: float) -> void:
+	var speed := travel_config.speed_at(elapsed)
+	starfield.cam_velocity = travel_config.direction() * speed
+	starfield.cam_pos += starfield.cam_velocity * delta
 	starfield.queue_redraw()
+	var intensity := speed / maxf(travel_config.scroll_speed, 1.0)
+	speed_fx.step(delta, intensity, player, asteroids, fx)
+
+
+## Mantem a nave dentro da area visivel (com folga do tamanho dela).
+func _keep_player_on_screen() -> void:
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	var margin := minf(player.bound_radius * 0.5 + 12.0, minf(half.x, half.y) * 0.8)
+	var lo := camera.global_position - half + Vector2.ONE * margin
+	var hi := camera.global_position + half - Vector2.ONE * margin
+	var p := player.global_position
+	var clamped := p.clamp(lo, hi)
+	# Batendo na borda, perde a velocidade naquele eixo.
+	if clamped.x != p.x:
+		player.velocity.x = 0.0
+	if clamped.y != p.y:
+		player.velocity.y = 0.0
+	player.global_position = clamped
 
 
 func _to_screen(world_pos: Vector2) -> Vector2:
@@ -541,8 +577,7 @@ func _to_screen(world_pos: Vector2) -> Vector2:
 
 
 func _update_hud() -> void:
-	hud.score_card.set_value(score)
-	hud.score_card.set_sub("RECORDE %s" % UIStyle.fmt_int(maxi(best_score, score)))
+	hud.race_bar.set_time(elapsed, travel_config.race_duration)
 	hud.cells_card.set_value(player.cells.size())
 	hud.cells_card.set_sub("COLETADOS %s" % UIStyle.fmt_int(collected))
 	hud.time_card.set_text(UIStyle.fmt_time(elapsed))

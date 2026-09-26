@@ -29,6 +29,17 @@ func burst(at: Vector2, color: Color, count: int, speed: float) -> void:
 		_color.append(color)
 
 
+## Uma particula com velocidade definida (rastros).
+func spark(at: Vector2, velocity: Vector2, color: Color, life: float) -> void:
+	if _pos.size() >= MAX_PARTICLES:
+		return
+	_pos.append(at)
+	_vel.append(velocity)
+	_life.append(life)
+	_max_life.append(life)
+	_color.append(color)
+
+
 ## Anel de choque que se expande ate `radius` (explosoes).
 func ring(at: Vector2, radius: float, color: Color) -> void:
 	_rings.append({"pos": at, "radius": radius, "color": color, "t": 0.0})

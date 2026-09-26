@@ -44,13 +44,16 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | `scripts/bullets.gd` | Projéteis do canhão comum e da shotgun, em arrays compactos |
 | `scripts/lasers.gd`, `scripts/missiles.gd` | Raio laser e mísseis da bomba |
 | `main.tscn`, `scripts/ui/main_menu.gd` | Menu principal (cena inicial): jogar, manual, sair e recorde, com as artes flutuando no fundo |
-| `game.tscn`, `scripts/game.gd` | Partida: spawn, colisões, câmera e estatísticas |
+| `game.tscn`, `scripts/game.gd` | Partida: spawn, colisões, câmera fixa com fundo rolando e estatísticas |
+| `scripts/travel_config.gd`, `config/travel.tres` | Velocidade do fundo, efeitos de velocidade e tempo até a chegada |
+| `scripts/starfield.gd`, `scripts/speed_fx.gd` | Fundo de estrelas (parallax, rastros, linhas de velocidade) e riscos/rastro na nave e nos asteroides |
 | `scripts/save_data.gd` | Recorde salvo entre partidas |
 | `scripts/input_actions.gd` | Teclas e botões das ações (pausa, girar, arrastar), definidos por código |
 | `scripts/ui/ui_skin.gd`, `art/ui/` | Sprites próprios da interface: lista de slots (`SLOTS`) e troca placeholder → sprite |
 | `scripts/ui/ui_sprite.gd` | `UISprite`: objeto de UI que desenha o sprite do slot ou, sem ele, o placeholder |
 | `scripts/ui/ui_style.gd` | Paleta, fontes e estilos placeholder (cantos chanfrados) da interface; `plain()` tira acentos (a fonte Hexagon não tem) |
 | `scripts/ui/hud.gd` | HUD: cards animados, textos flutuantes, vinheta de dano, mira e game over |
+| `scripts/ui/race_bar.gd` | Linha de chegada no rodapé (marcador da nave e bandeira) |
 | `scripts/ui/stat_card.gd`, `cannon_card.gd`, `hex_icon.gd` | Cards do HUD (status e canhões) e ícone animado (placeholder hexagonal) |
 | `scripts/ui/pause_menu.gd` | Menu de pausa (continuar, info, menu principal, sair) |
 | `scripts/ui/manual.gd` | Manual (controles, regras, canhões) e painéis compartilhados pelos menus |
@@ -60,11 +63,12 @@ Toda a UI desenhada em código é placeholder. Para trocar uma peça pela sua ar
 
 | Slots | O que são | Como é encaixado |
 |---|---|---|
-| `card`, `card_score`, `card_cells`, `card_time`, `card_cannons`, `card_record` | Molduras dos cards (`card` vale para os que não tiverem a sua) | 9-slice |
+| `card`, `card_cells`, `card_time`, `card_cannons`, `card_record` | Molduras dos cards (`card` vale para os que não tiverem a sua) | 9-slice |
 | `panel`, `panel_pause`, `panel_manual`, `panel_game_over` | Molduras dos painéis (`panel` vale para todos) | 9-slice |
 | `button_normal`, `button_hover`, `button_pressed`, `button_focus` | Estados dos botões e abas (os que faltarem usam o estado mais próximo) | 9-slice |
 | `key`, `separator` | Chip de tecla do manual e linha separadora | 9-slice / estica na largura |
-| `icon_score`, `icon_cells`, `icon_time`, `icon_record`, `icon_pause`, `icon_manual`, `icon_cannon_*` | Ícones dos cards e títulos (pulsam, não giram) | Cabe no tamanho do placeholder |
+| `icon_cells`, `icon_time`, `icon_record`, `icon_pause`, `icon_manual`, `icon_cannon_*` | Ícones dos cards e títulos (pulsam, não giram) | Cabe no tamanho do placeholder |
+| `race_marker`, `race_flag` | Marcador da nave e bandeira de chegada na linha do rodapé | Cabe no tamanho do placeholder |
 | `pip_full`, `pip_empty`, `reticle`, `key_arrow` | Progresso até o próximo canhão, mira e seta das teclas | Cabe no tamanho do placeholder |
 | `title_logo` | Logo do menu (substitui o texto HEXCORE) | Tamanho real |
 | `damage_vignette`, `backdrop_menu`, `backdrop_pause`, `backdrop_game_over` | Borda de dano e fundos atrás dos painéis | Estica na tela |
@@ -83,6 +87,15 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 | Movimento | faixa de velocidade, multiplicador para pequenos/grandes, giro inicial e máximo, elasticidade das batidas, velocidade ao se partir |
 | Dano na nave | quantas células da nave cada célula do asteroide destrói |
 | Minério | fração perdida, tamanho e velocidade dos pedaços, máximo na tela, chance de canhão especial |
+
+## Viagem (fundo e chegada)
+A câmera fica parada e só o fundo rola, dando a impressão de que a nave avança para a direita; a nave se move livre, mas presa na tela. No rodapé, o marcador da nave anda até a bandeira de chegada e a alcança aos 5 min. Tudo isso fica em `config/travel.tres` (explicações em `scripts/travel_config.gd`), com presets pelo campo **Travel Config** do nó `Game`.
+
+| Grupo | Parâmetros |
+|---|---|
+| Fundo | velocidade inicial, aumento por minuto e máxima, direção do avanço, parallax das estrelas distantes/próximas, quantidade de estrelas, rastro das estrelas, linhas de velocidade (quantidade, opacidade, velocidade) |
+| Efeitos de velocidade | riscos atrás da nave e dos asteroides (quantidade, comprimento, opacidade), partículas de rastro da nave por segundo |
+| Chegada | tempo até a bandeira (padrão 300 s) |
 
 ## Parâmetros dos canhões
 Ficam em `config/cannons.tres` (padrões e explicação em `scripts/cannon_config.gd`), com presets pelo campo **Cannon Config** do nó `Game`. Dano é medido em "tiros do canhão comum".

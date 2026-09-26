@@ -1,15 +1,15 @@
 class_name Hud
 extends CanvasLayer
-## Interface durante o jogo: cards de status, textos flutuantes,
-## vinheta de dano, mira hexagonal e tela de game over.
+## Interface durante o jogo: cards de status, linha de chegada no rodape,
+## textos flutuantes, vinheta de dano, mira hexagonal e tela de game over.
 
 signal restart_requested
 signal menu_requested
 
-var score_card: StatCard
 var cells_card: StatCard
 var time_card: StatCard
 var cannon_card: CannonCard
+var race_bar: RaceBar
 
 var _root: Control
 var _popups: Control
@@ -48,7 +48,6 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 10)
 	bar.add_child(row)
-	score_card = StatCard.new("PONTOS", UIStyle.GOLD, "score")
 	cells_card = StatCard.new("HEXÁGONOS", UIStyle.CYAN, "cells")
 	cannon_card = CannonCard.new()
 	time_card = StatCard.new("TEMPO", UIStyle.TEXT_DIM, "time")
@@ -56,8 +55,18 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for c in [score_card, cells_card, cannon_card, spacer, time_card]:
+	for c in [cells_card, cannon_card, spacer, time_card]:
 		row.add_child(c)
+
+	# Linha de chegada: 60% da largura, centrada no rodape.
+	race_bar = RaceBar.new()
+	_root.add_child(race_bar)
+	race_bar.anchor_left = 0.2
+	race_bar.anchor_right = 0.8
+	race_bar.anchor_top = 1.0
+	race_bar.anchor_bottom = 1.0
+	race_bar.offset_top = -50.0
+	race_bar.offset_bottom = -12.0
 
 	_hint = UIStyle.label("ESC  pausar / info", 11, Color(UIStyle.TEXT_DIM, 0.6), UIStyle.CAPTION)
 	_root.add_child(_hint)
@@ -106,6 +115,7 @@ func damage_flash(strength: float) -> void:
 func show_game_over(stats: Dictionary) -> void:
 	set_playing(false)
 	_hint.visible = false
+	race_bar.visible = false
 	var dim := ColorRect.new()
 	dim.color = Color(0.0, 0.0, 0.02, 0.6)
 	var overlay := UISkin.replace("backdrop_game_over", dim, true)

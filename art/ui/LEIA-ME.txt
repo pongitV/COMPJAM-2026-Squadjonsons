@@ -12,7 +12,9 @@ em UISkin.SLICE). Icones, pips, mira e seta sao encaixados no tamanho do
 placeholder mantendo a proporcao; desenhe-os quadrados.
 
 Tamanhos de referencia (px na tela):
-  icon_score / icon_cells / icon_time / icon_record    30 x 30
+  icon_cells / icon_time / icon_record                  30 x 30
+  race_marker                                           22 x 22
+  race_flag (mastro embaixo a esquerda)                 26 x 30
   icon_pause / icon_manual                              28 x 28
   icon_cannon_*                                         18 x 18
   pip_full / pip_empty                                  14 x 14
