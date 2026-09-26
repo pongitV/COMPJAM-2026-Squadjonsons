@@ -1,6 +1,7 @@
 class_name Hex
 extends RefCounted
-## Matemática de grade hexagonal (pointy-top, coordenadas axiais q/r).
+## Matemática de grade hexagonal (flat-top: lado plano em cima, como as
+## células da arte; coordenadas axiais q/r).
 ## Referência: https://www.redblobgames.com/grids/hexagons/
 
 ## Raio (centro -> vértice) de uma célula, em pixels.
@@ -10,17 +11,23 @@ const DIRS := [
 	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
 	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
 ]
+## A própria célula + as 6 vizinhas.
+const AROUND := [
+	Vector2i(0, 0),
+	Vector2i(1, 0), Vector2i(1, -1), Vector2i(0, -1),
+	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
+]
 
 static var _corners := PackedVector2Array()
 
 
 static func to_pixel(h: Vector2i) -> Vector2:
-	return Vector2(SIZE * SQRT3 * (h.x + h.y * 0.5), SIZE * 1.5 * h.y)
+	return Vector2(SIZE * 1.5 * h.x, SIZE * SQRT3 * (h.y + h.x * 0.5))
 
 
 static func from_pixel(p: Vector2) -> Vector2i:
-	var q := (SQRT3 / 3.0 * p.x - p.y / 3.0) / SIZE
-	var r := (2.0 / 3.0 * p.y) / SIZE
+	var q := (2.0 / 3.0 * p.x) / SIZE
+	var r := (-p.x / 3.0 + SQRT3 / 3.0 * p.y) / SIZE
 	return _cube_round(q, r)
 
 
@@ -29,12 +36,46 @@ static func distance(a: Vector2i, b: Vector2i) -> int:
 	return (absi(d.x) + absi(d.y) + absi(d.x + d.y)) >> 1
 
 
+## Gira uma coordenada axial em `turns` passos de 60° (sentido horário na
+## tela), ou seja: to_pixel(rotate(h, 1)) == to_pixel(h).rotated(PI / 3).
+static func rotate(h: Vector2i, turns: int) -> Vector2i:
+	var q := h.x
+	var r := h.y
+	for i in posmod(turns, 6):
+		var s := -q - r
+		q = -r
+		r = -s
+	return Vector2i(q, r)
+
+
+## Separa um conjunto de células em grupos conectados (listas de Vector2i).
+static func components(keys: Array) -> Array:
+	var left := {}
+	for h in keys:
+		left[h] = true
+	var groups := []
+	while not left.is_empty():
+		var start: Vector2i = left.keys()[0]
+		left.erase(start)
+		var group: Array[Vector2i] = [start]
+		var i := 0
+		while i < group.size():
+			for d in DIRS:
+				var n: Vector2i = group[i] + d
+				if left.has(n):
+					left.erase(n)
+					group.append(n)
+			i += 1
+		groups.append(group)
+	return groups
+
+
 ## Vértices de um hexágono centrado na origem (levemente encolhido para
 ## deixar a grade visível).
 static func corners() -> PackedVector2Array:
 	if _corners.is_empty():
 		for i in 6:
-			_corners.append(Vector2.from_angle(deg_to_rad(60.0 * i - 30.0)) * (SIZE - 1.0))
+			_corners.append(Vector2.from_angle(deg_to_rad(60.0 * i)) * (SIZE - 1.0))
 	return _corners
 
 

@@ -1,0 +1,120 @@
+class_name Art
+extends RefCounted
+## Artes das células (flores de 19 hexágonos) e dos canhões. São juntadas em
+## dois atlas na primeira vez que forem usadas, para cada objeto continuar
+## sendo desenhado numa chamada só.
+
+enum { CORE, HULL, COMMON, SHOTGUN, LASER, BOMB, ORE, ASTEROID }
+
+const CELL_FILES := {
+	CORE: "cell_core",
+	HULL: "cell_hull",
+	COMMON: "cell_common",
+	SHOTGUN: "cell_shotgun",
+	LASER: "cell_laser",
+	BOMB: "cell_bomb",
+	ORE: "cell_ore",
+	ASTEROID: "cell_asteroid",
+}
+const CANNON_FILES := {
+	Weapons.COMMON: "cannon_common",
+	Weapons.SHOTGUN: "cannon_shotgun",
+	Weapons.LASER: "cannon_laser",
+	Weapons.BOMB: "cannon_bomb",
+}
+## Largura (ponta a ponta) da flor na arte = largura da célula no jogo.
+const CELL_ART_WIDTH := 105.0
+## Centro da base do canhão, medido do topo da imagem (o cano aponta para baixo).
+const CANNON_PIVOT_Y := 30.0
+## Espaço vazio entre as imagens do atlas (evita "vazamento" nos mipmaps).
+const PAD := 16
+
+static var _cell_atlas: Texture2D
+static var _cell_uv := {}
+static var _cell_size := {}
+static var _cannon_atlas: Texture2D
+static var _cannon_uv := {}
+static var _cannon_size := {}
+
+
+## Pixels do jogo por pixel da arte.
+static func scale() -> float:
+	return 2.0 * Hex.SIZE / CELL_ART_WIDTH
+
+
+## Tipo de arte de uma célula a partir do canhão que ela carrega.
+static func for_weapon(weapon: int) -> int:
+	match weapon:
+		Weapons.COMMON: return COMMON
+		Weapons.SHOTGUN: return SHOTGUN
+		Weapons.LASER: return LASER
+		Weapons.BOMB: return BOMB
+	return HULL
+
+
+static func cell_atlas() -> Texture2D:
+	if _cell_atlas == null:
+		_cell_atlas = _build_atlas(CELL_FILES, _cell_uv, _cell_size)
+	return _cell_atlas
+
+
+## Região da célula no atlas (UV de 0 a 1).
+static func cell_uv(kind: int) -> Rect2:
+	cell_atlas()
+	return _cell_uv[kind]
+
+
+## Tamanho da flor no jogo (px).
+static func cell_size(kind: int) -> Vector2:
+	cell_atlas()
+	return _cell_size[kind] * scale()
+
+
+static func cannon_atlas() -> Texture2D:
+	if _cannon_atlas == null:
+		_cannon_atlas = _build_atlas(CANNON_FILES, _cannon_uv, _cannon_size)
+	return _cannon_atlas
+
+
+static func cannon_uv(weapon: int) -> Rect2:
+	cannon_atlas()
+	return _cannon_uv[weapon]
+
+
+## Tamanho do canhão no jogo (px).
+static func cannon_size(weapon: int) -> Vector2:
+	cannon_atlas()
+	return _cannon_size[weapon] * scale()
+
+
+## Distância do centro da célula até a ponta do cano (de onde sai o tiro).
+static func muzzle_length(weapon: int) -> float:
+	return cannon_size(weapon).y - CANNON_PIVOT_Y * scale()
+
+
+static func _build_atlas(files: Dictionary, uv_out: Dictionary, size_out: Dictionary) -> Texture2D:
+	var images := {}
+	var width := 0
+	var height := 0
+	for key in files:
+		var img: Image = load("res://art/%s.png" % files[key]).get_image()
+		if img.is_compressed():
+			img.decompress()
+		img.convert(Image.FORMAT_RGBA8)
+		images[key] = img
+		width += img.get_width() + PAD
+		height = maxi(height, img.get_height())
+	height += PAD
+	var atlas := Image.create_empty(width, height, false, Image.FORMAT_RGBA8)
+	var x := 0
+	for key in images:
+		var img: Image = images[key]
+		atlas.blit_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), Vector2i(x, 0))
+		uv_out[key] = Rect2(
+			float(x) / width, 0.0,
+			float(img.get_width()) / width, float(img.get_height()) / height)
+		size_out[key] = Vector2(img.get_size())
+		x += img.get_width() + PAD
+	# Mipmaps: as artes aparecem bem menores que o original e giram.
+	atlas.generate_mipmaps()
+	return ImageTexture.create_from_image(atlas)

@@ -1,13 +1,22 @@
 class_name Asteroid
 extends HexBody
 ## Aglomerado aleatório de n células. É destruído após ceil(n^(3/2)) disparos.
+## Ao encostar na nave, cada célula dele destrói CELL_CHARGES células da nave
+## (as que tocar) e depois some; se o asteroide se partir, os pedaços viram
+## asteroides separados.
 
 const DAMAGED_COLOR := Color(0.85, 0.35, 0.2)
+## Cor média da arte do asteroide (base do tingimento de dano e dos efeitos).
+const ART_COLOR := Color("#756348")
+## Quantas células da nave cada célula do asteroide destrói antes de sumir.
+const CELL_CHARGES := 2
 
 var size := 1
 var max_hp := 1
 var hp := 1
 var base_color := Color.GRAY
+## Vector2i -> cargas restantes daquela célula contra a nave.
+var charges := {}
 var _damage_accum := 0.0
 
 
@@ -19,18 +28,14 @@ func setup(n: int) -> void:
 		var keys := cells.keys()
 		var h: Vector2i = keys[randi() % keys.size()]
 		cells[h + Hex.DIRS[randi() % 6]] = true
+	for h in cells:
+		charges[h] = CELL_CHARGES
 
 	size = cells.size()
 	max_hp = ceili(pow(size, 1.5))
 	hp = max_hp
-
-	var sum := Vector2.ZERO
-	for h in cells:
-		sum += Hex.to_pixel(h)
-	center_offset = sum / size
-
-	base_color = Color.from_hsv(randf_range(0.05, 0.12), randf_range(0.15, 0.35), randf_range(0.42, 0.58))
-	recompute_bounds()
+	base_color = ART_COLOR
+	recenter()
 
 
 func step(delta: float) -> void:
@@ -59,6 +64,59 @@ func apply_damage(amount: float) -> void:
 	_update_tint()
 
 
+## Gasta uma carga da célula ao destruir uma célula da nave.
+## Retorna true quando a célula esgotou e deve sumir.
+func spend_charge(h: Vector2i) -> bool:
+	charges[h] -= 1
+	return charges[h] <= 0
+
+
+## Remove células esgotadas. Partes que ficarem desconectadas viram novos
+## asteroides (retornados, para o jogo adicionar à cena). O HP acompanha o
+## tamanho, mantendo a proporção de dano já sofrido.
+func remove_cells(keys: Array) -> Array[Asteroid]:
+	for h in keys:
+		cells.erase(h)
+		charges.erase(h)
+	var pieces: Array[Asteroid] = []
+	if cells.is_empty():
+		return pieces
+	var groups := Hex.components(cells.keys())
+	groups.sort_custom(func(a, b): return a.size() > b.size())
+	var hp_ratio := float(hp) / max_hp
+	for i in range(1, groups.size()):
+		var piece := Asteroid.new()
+		piece._split_from(self, groups[i], hp_ratio)
+		pieces.append(piece)
+		for h in groups[i]:
+			cells.erase(h)
+			charges.erase(h)
+	_resize(hp_ratio)
+	recenter()
+	return pieces
+
+
+func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
+	for h in keys:
+		cells[h] = true
+		charges[h] = source.charges[h]
+	base_color = source.base_color
+	rotation = source.rotation
+	position = source.position
+	center_offset = source.center_offset
+	angular_velocity = source.angular_velocity
+	velocity = source.velocity + Vector2.from_angle(randf() * TAU) * 15.0
+	_resize(hp_ratio)
+	recenter()
+
+
+func _resize(hp_ratio: float) -> void:
+	size = cells.size()
+	max_hp = ceili(pow(size, 1.5))
+	hp = maxi(1, ceili(hp_ratio * max_hp))
+	_update_tint()
+
+
 ## A cor de dano/flash é igual no asteroide inteiro, então vira um
 ## self_modulate (grátis) em vez de recalcular a cor de cada vértice.
 func _update_tint() -> void:
@@ -67,9 +125,5 @@ func _update_tint() -> void:
 	self_modulate = Color(target.r / base_color.r, target.g / base_color.g, target.b / base_color.b)
 
 
-func cell_color(_h: Vector2i) -> Color:
-	return base_color
-
-
-func outline_color(_h: Vector2i) -> Color:
-	return base_color.lightened(0.35)
+func cell_art(_h: Vector2i) -> int:
+	return Art.ASTEROID

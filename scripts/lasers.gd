@@ -21,7 +21,7 @@ func step(delta: float, player: Player, asteroids: Array[Asteroid], fx: Fx) -> v
 		if _beams[cell] <= 0.0 or not player.alive or player.weapon_at(cell) != Weapons.LASER:
 			_beams.erase(cell)
 			continue
-		var p0 := player.cell_global(cell)
+		var p0 := player.muzzle(cell)
 		var p1 := p0 + player.barrel_dir(cell) * Weapons.LASER_LENGTH
 		for a in asteroids:
 			if a.hp > 0 and _beam_hits(a, p0, p1):
@@ -49,11 +49,14 @@ func _draw() -> void:
 		return
 	var color := Weapons.color(Weapons.LASER)
 	for cell in _beams:
+		# A célula pode ter sido destruída depois do step deste frame.
+		if _player.weapon_at(cell) != Weapons.LASER:
+			continue
 		var left: float = _beams[cell]
 		# Liga rápido, desliga suave e tremula um pouco.
 		var fade := clampf((Weapons.LASER_DURATION - left) / 0.08, 0.0, 1.0) * clampf(left / 0.25, 0.0, 1.0)
 		var w := Weapons.LASER_WIDTH * fade * (1.0 + 0.15 * sin(_t * 45.0))
-		var p0 := _player.cell_global(cell)
+		var p0 := _player.muzzle(cell)
 		var p1 := p0 + _player.barrel_dir(cell) * Weapons.LASER_LENGTH
 		draw_line(p0, p1, Color(color, 0.18 * fade), w * 3.5, true)
 		draw_line(p0, p1, Color(color, 0.9 * fade), w, true)

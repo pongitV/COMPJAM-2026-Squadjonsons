@@ -1,59 +1,74 @@
 class_name Ore
 extends HexBody
-## Célula solta de minério. Ao tocar o jogador vira uma célula do jogador:
-## minério verde vira casco; minério colorido vira um canhão daquele tipo.
+## Pedaço de minério: um grupo de células soltas, vindo de um asteroide
+## destruído ou de uma parte que se soltou da nave. Arrastado pelo raio
+## trator e encaixado no grid da nave, vira parte dela.
+## cells: Vector2i -> tipo de canhão (Weapons.NONE = minério verde, vira casco).
 
-const COLOR := Color(0.35, 1.0, 0.55)
+## Cor da arte do minério verde (para feixe, efeitos e textos).
+const COLOR := Color("#6ffc12")
 const LIFETIME := 25.0
 const SPECIAL_LIFETIME := 35.0
-const MAGNET_RANGE := 70.0
-const MAGNET_ACCEL := 500.0
 
-## Weapons.NONE para minério comum.
-var weapon := Weapons.NONE
+## Sendo arrastado pelo raio trator.
+var dragged := false
 var life := LIFETIME
 var _pulse := randf() * TAU
 
 
-func _init(weapon_type: int = Weapons.NONE) -> void:
-	weapon = weapon_type
-	if weapon != Weapons.NONE:
-		life = SPECIAL_LIFETIME
-	cells[Vector2i.ZERO] = true
-	recompute_bounds()
+## Cria o pedaço a partir de células de outro objeto (asteroide ou nave),
+## no mesmo lugar e com a mesma rotação em que elas estavam.
+## weapons: Vector2i -> tipo de canhão (células ausentes são minério verde).
+func setup_from(source: HexBody, keys: Array, weapons: Dictionary = {}) -> void:
+	for h in keys:
+		cells[h] = weapons.get(h, Weapons.NONE)
+	position = source.position
+	rotation = source.rotation
+	center_offset = source.center_offset
+	recenter()
+	life = SPECIAL_LIFETIME if has_special() else LIFETIME
 
 
-func step(delta: float, player: Player) -> void:
-	if player != null and player.alive:
-		var to_player := player.global_position - global_position
-		var dist := to_player.length()
-		if dist > 0.0 and dist < player.bound_radius + MAGNET_RANGE:
-			velocity += to_player / dist * MAGNET_ACCEL * delta
+func has_special() -> bool:
+	for h in cells:
+		if cells[h] != Weapons.NONE:
+			return true
+	return false
+
+
+## Cor principal do pedaço (a do canhão, se tiver um).
+func main_color() -> Color:
+	for h in cells:
+		if cells[h] != Weapons.NONE:
+			return Weapons.color(cells[h])
+	return COLOR
+
+
+func step(delta: float) -> void:
+	if dragged:
+		# Quem move e gira é o raio trator; e não expira enquanto está preso nele.
+		visible = true
+		return
+	rotation += angular_velocity * delta
 	velocity *= pow(0.5, delta)
 	position += velocity * delta
-	rotation += angular_velocity * delta
 	life -= delta
 	# Pisca nos últimos segundos antes de sumir.
 	visible = life > 5.0 or fmod(life, 0.3) > 0.12
-	if weapon != Weapons.NONE:
+	if has_special():
 		_pulse += delta * 5.0
 		queue_redraw()
 
 
-func cell_color(_h: Vector2i) -> Color:
-	return COLOR if weapon == Weapons.NONE else Weapons.color(weapon)
-
-
-func outline_color(_h: Vector2i) -> Color:
-	return Color(0.85, 1.0, 0.9, 0.9) if weapon == Weapons.NONE else Color.WHITE
+func cell_art(h: Vector2i) -> int:
+	return Art.ORE if cells[h] == Weapons.NONE else Art.for_weapon(cells[h])
 
 
 func _draw() -> void:
-	if weapon != Weapons.NONE:
-		# Brilho pulsante para destacar o minério de canhão.
-		var glow := Weapons.color(weapon)
-		glow.a = 0.25 + 0.15 * sin(_pulse)
-		draw_circle(Vector2.ZERO, Hex.SIZE * (1.5 + 0.15 * sin(_pulse)), glow)
+	# Brilho pulsante atrás das células de canhão, para destacá-las.
+	for h in cells:
+		if cells[h] != Weapons.NONE:
+			var glow := Weapons.color(cells[h])
+			glow.a = 0.25 + 0.15 * sin(_pulse)
+			draw_circle(cell_local(h), Hex.SIZE * (1.5 + 0.15 * sin(_pulse)), glow)
 	super._draw()
-	if weapon != Weapons.NONE:
-		draw_circle(Vector2.ZERO, Hex.SIZE * 0.3, Color.WHITE)

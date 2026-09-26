@@ -168,8 +168,9 @@ func _build_info() -> Control:
 	var controls := [
 		[["W", "A", "S", "D"], "Mover"],
 		[["UP", "LEFT", "DOWN", "RIGHT"], "Mover (alternativo)"],
-		[["Clique esquerdo"], "Atirar (segure)"],
-		[["R"], "Girar a nave para a mira (segure)"],
+		[["Clique esquerdo"], "Arrastar pedaço até a nave"],
+		[["Roda do mouse"], "Girar o pedaço arrastado"],
+		[["Clique direito"], "Girar a nave para o mouse (segure)"],
 		[["ESC"], "Pausar / voltar"],
 		[["R"], "Reiniciar (após o game over)"],
 	]
@@ -186,16 +187,17 @@ func _build_info() -> Control:
 	left.add_child(HSeparator.new())
 	left.add_child(UIStyle.label("COMO JOGAR", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
 	_rule(left, UIStyle.GOLD, "", "O hexágono dourado é o seu núcleo. Se ele for destruído, é fim de jogo.")
-	_rule(left, Color(0.7, 0.6, 0.5), "", "Um asteroide de N hexágonos aguenta N^1,5 de dano. Se bater na nave, destrói N hexágonos seus.")
-	_rule(left, UIStyle.GREEN, "", "Asteroides destruídos soltam minério. O verde vira casco; o colorido vira um canhão daquela cor.")
+	_rule(left, Color(0.7, 0.6, 0.5), "", "Um asteroide de N hexágonos aguenta N^1,5 de dano. Cada hexágono dele que encosta na nave destrói 2 hexágonos seus (os que tocar) e some. Partes que se soltarem do núcleo ficam flutuando e podem ser encaixadas de novo.")
+	_rule(left, UIStyle.GREEN, "", "Asteroides destruídos se partem em pedaços de minério (20% se perde). Arraste um pedaço (dentro do raio trator) até a nave e solte onde o encaixe aparecer. O verde vira casco; o colorido vira um canhão.")
+	_rule(left, UIStyle.CYAN, "", "Os canhões atiram sozinhos, cada um no asteroide mais próximo dele.")
 
 	# Coluna direita: canhões.
 	right.add_child(UIStyle.label("CANHÕES", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
 	_rule(right, Weapons.color(Weapons.COMMON), "COMUM",
-		"Tiro único na mira. Você ganha 1 a cada %d asteroides destruídos. Fica sempre na borda da nave." % Weapons.ASTEROIDS_PER_COMMON)
-	_rule(right, Weapons.color(Weapons.SHOTGUN), "SHOTGUN", "6 tiros em leque, de alcance curto.")
-	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Raio para fora da nave, com dano contínuo por 3 segundos. Gire a nave (R) para mirar.")
-	_rule(right, Weapons.color(Weapons.BOMB), "BOMBA", "Míssil lento que explode na mira ou ao tocar um asteroide, com dano em área.")
+		"Tiro único no asteroide mais próximo. Você ganha 1 a cada %d asteroides destruídos. Fica sempre na borda da nave." % Weapons.ASTEROIDS_PER_COMMON)
+	_rule(right, Weapons.color(Weapons.SHOTGUN), "SHOTGUN", "6 tiros em leque no asteroide mais próximo, de alcance curto.")
+	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Dispara sozinho quando um asteroide cruza sua linha: raio para fora da nave por 3 s. Gire a nave (clique direito) para mirar.")
+	_rule(right, Weapons.color(Weapons.BOMB), "BOMBA", "Míssil lento lançado no asteroide mais próximo, com dano em área.")
 	_rule(right, Weapons.color(Weapons.NONE), "CASCO", "Hexágono sem canhão. Não atira, mas protege o núcleo.")
 
 	_info_back_button = UIStyle.button("VOLTAR")

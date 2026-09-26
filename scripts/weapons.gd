@@ -5,12 +5,13 @@ extends RefCounted
 
 enum { NONE, COMMON, SHOTGUN, LASER, BOMB }
 
+## Cores das artes (células e canhões).
 const COLORS := {
-	NONE: Color(0.36, 0.5, 0.64),
-	COMMON: Color(0.3, 0.8, 1.0),
-	SHOTGUN: Color(1.0, 0.58, 0.2),
-	LASER: Color(1.0, 0.25, 0.45),
-	BOMB: Color(0.72, 0.42, 1.0),
+	NONE: Color("#cfcfcf"),
+	COMMON: Color("#459cff"),
+	SHOTGUN: Color("#ffb41f"),
+	LASER: Color("#ff2a2a"),
+	BOMB: Color("#f72df0"),
 }
 const NAMES := {
 	NONE: "CASCO",
@@ -48,6 +49,21 @@ const MISSILE_SPEED := 200.0
 const MISSILE_LIFE := 3.5
 const BLAST_RADIUS := 110.0
 const BLAST_DAMAGE := 18.0
+
+## Distância máxima (até a borda do asteroide) em que cada canhão escolhe
+## um alvo. O laser dispara quando um asteroide cruza a linha do raio.
+const RANGE := {
+	COMMON: BULLET_SPEED * BULLET_LIFE * 0.9,
+	SHOTGUN: PELLET_SPEED * PELLET_LIFE,
+	LASER: LASER_LENGTH,
+	BOMB: 520.0,
+}
+## Velocidade do projétil, usada para mirar à frente de alvos em movimento.
+const PROJECTILE_SPEED := {
+	COMMON: BULLET_SPEED,
+	SHOTGUN: PELLET_SPEED,
+	BOMB: MISSILE_SPEED,
+}
 
 ## A cada N asteroides destruídos o jogador ganha um canhão comum.
 const ASTEROIDS_PER_COMMON := 5

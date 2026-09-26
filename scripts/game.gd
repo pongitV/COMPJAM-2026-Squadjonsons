@@ -8,16 +8,20 @@ const DESPAWN_FACTOR := 2.5
 const MAX_ASTEROIDS := 45
 ## Máximo de minérios soltos na tela ao mesmo tempo.
 const MAX_ORES := 150
-## Quantidade de minério por célula do asteroide destruído.
-const ORE_PER_CELL := 1.0
-## Se true, asteroides que batem no jogador também soltam minério.
-const DROP_ORE_ON_COLLISION := false
+## Fração das células do asteroide que se perde quando ele se parte em minério.
+const ORE_LOSS := 0.2
+## Tamanho (em células) dos pedaços em que o asteroide se parte.
+const PIECE_MIN := 2
+const PIECE_MAX := 4
 const SAVE_PATH := "user://save.cfg"
+## Aproxima a câmera para as artes aparecerem maiores (1.0 = escala original).
+const ART_ZOOM := 1.2
 
 var player: Player
 var bullets: Bullets
 var missiles: Missiles
 var lasers: Lasers
+var tractor: Tractor
 var fx: Fx
 var camera: Camera2D
 var starfield: Starfield
@@ -40,6 +44,8 @@ var _shake := 0.0
 
 func _ready() -> void:
 	randomize()
+	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	InputActions.ensure_defaults()
 	best_score = _load_best()
 
@@ -53,6 +59,12 @@ func _ready() -> void:
 	player.z_index = 2
 	player.core_destroyed.connect(_on_core_destroyed)
 	add_child(player)
+
+	# Abaixo da nave: o feixe parece sair da borda dela.
+	tractor = Tractor.new()
+	tractor.z_index = 1
+	tractor.attached.connect(_on_ore_attached)
+	add_child(tractor)
 
 	lasers = Lasers.new()
 	lasers.z_index = 1
@@ -92,9 +104,12 @@ func _physics_process(delta: float) -> void:
 		elapsed += delta
 		player.aim = get_global_mouse_position()
 		player.step(delta)
-		if Input.is_action_pressed("fire"):
-			for shot in player.fire():
-				_fire_shot(shot)
+		# Tiro automático: cada canhão mira no asteroide mais próximo dele.
+		player.update_targets(delta, _asteroids_on_screen())
+		for shot in player.fire():
+			_fire_shot(shot)
+		tractor.step(delta, player, ores, get_global_mouse_position(),
+			Input.is_action_pressed("drag"), Input.is_action_just_pressed("drag"))
 
 	for a in asteroids:
 		a.step(delta)
@@ -104,7 +119,7 @@ func _physics_process(delta: float) -> void:
 		_shake = maxf(_shake, 7.0)
 	for a in asteroids.duplicate():
 		if a.hp <= 0:
-			_destroy_asteroid(a, true)
+			_destroy_asteroid(a)
 
 	if not game_over:
 		_check_player_collisions()
@@ -118,6 +133,12 @@ func _physics_process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Roda do mouse gira o pedaço que está sendo arrastado.
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			tractor.turn(-1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			tractor.turn(1)
 	if game_over and event.is_action_pressed("restart"):
 		_restart()
 
@@ -129,7 +150,7 @@ func _restart() -> void:
 
 # --- Canhões ----------------------------------------------------------------
 
-## shot: {type, cell, origin, dir} vindo de Player.fire().
+## shot: {type, cell, origin, dir, target_pos} vindo de Player.fire().
 func _fire_shot(shot: Dictionary) -> void:
 	var origin: Vector2 = shot.origin
 	var dir: Vector2 = shot.dir
@@ -146,7 +167,7 @@ func _fire_shot(shot: Dictionary) -> void:
 		Weapons.LASER:
 			lasers.start(shot.cell)
 		Weapons.BOMB:
-			missiles.launch(origin, player.aim, player.velocity)
+			missiles.launch(origin, shot.target_pos, player.velocity)
 
 
 func _grant_common_cannon() -> void:
@@ -194,101 +215,224 @@ func _roll_asteroid_size() -> int:
 	return 1 + int(pow(randf(), 1.7) * max_n)
 
 
-func _destroy_asteroid(a: Asteroid, drop_ore: bool) -> void:
+## Asteroide destruído pelos canhões: pontos, progresso de canhão e minério.
+func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
-	for h in a.cells:
-		fx.burst(a.cell_global(h), a.base_color.lightened(0.2), 3, 110.0)
-	if drop_ore and not game_over:
+	if not game_over:
 		score += a.max_hp
 		destroyed += 1
 		hud.popup("+%s" % UIStyle.fmt_int(a.max_hp), UIStyle.GOLD, _to_screen(a.global_position),
 			clampi(14 + (a.size >> 1), 14, 24))
 		if destroyed % Weapons.ASTEROIDS_PER_COMMON == 0:
 			_grant_common_cannon()
-		var keys := a.cells.keys()
-		var count := maxi(1, roundi(a.size * ORE_PER_CELL))
-		# Às vezes um dos minérios é de canhão especial (mais chance em asteroides maiores).
-		var special := Weapons.roll_special() if randf() < Weapons.special_drop_chance(a.size) else Weapons.NONE
-		for i in count:
-			var origin := a.cell_global(keys[i % keys.size()])
-			var ore := Ore.new(special if i == 0 else Weapons.NONE)
-			ore.position = origin + Vector2(randf_range(-4, 4), randf_range(-4, 4))
-			var outward := (origin - a.global_position).normalized()
-			if outward == Vector2.ZERO:
-				outward = Vector2.from_angle(randf() * TAU)
-			ore.velocity = a.velocity + outward.rotated(randf_range(-0.5, 0.5)) * randf_range(20.0, 70.0)
-			ore.angular_velocity = randf_range(-2.0, 2.0)
-			ore.z_index = 1
-			add_child(ore)
-			ores.append(ore)
-		_trim_ores()
+	_break_into_ore(a)
 	a.queue_free()
+
+
+## O asteroide se parte em pedaços de PIECE_MIN..PIECE_MAX células conectadas,
+## no mesmo lugar em que estavam; ORE_LOSS das células some (vira poeira).
+func _break_into_ore(a: Asteroid) -> void:
+	var keys := a.cells.keys()
+	keys.shuffle()
+	# Arredondamento sorteado: em média perde exatamente ORE_LOSS.
+	var exact := keys.size() * (1.0 - ORE_LOSS)
+	var count := int(exact) + (1 if randf() < exact - int(exact) else 0)
+	for i in range(count, keys.size()):
+		fx.burst(a.cell_global(keys[i]), a.base_color.darkened(0.2), 6, 90.0)
+	var kept := keys.slice(0, count)
+	if kept.is_empty():
+		return
+
+	# Às vezes uma das células é de canhão especial (mais chance em asteroides maiores).
+	var weapons := {}
+	if randf() < Weapons.special_drop_chance(a.size):
+		weapons[kept[randi() % kept.size()]] = Weapons.roll_special()
+
+	for group in _split_into_pieces(kept):
+		var ore := Ore.new()
+		ore.setup_from(a, group, weapons)
+		var outward := (ore.global_position - a.global_position).normalized()
+		if outward == Vector2.ZERO:
+			outward = Vector2.from_angle(randf() * TAU)
+		ore.velocity = a.velocity + outward.rotated(randf_range(-0.4, 0.4)) * randf_range(20.0, 55.0)
+		ore.angular_velocity = randf_range(-1.0, 1.0)
+		_add_ore(ore)
+	for h in kept:
+		fx.burst(a.cell_global(h), a.base_color.lightened(0.2), 2, 70.0)
+	_trim_ores()
+
+
+## Divide células em grupos conectados de PIECE_MIN..PIECE_MAX células.
+## Começa e cresce pelas células com menos vizinhos livres (as que ficariam
+## isoladas) e, no fim, cola as sobras de 1 célula num pedaço vizinho.
+func _split_into_pieces(keys: Array) -> Array:
+	var left := {}
+	for h in keys:
+		left[h] = true
+	var piece_of := {}
+	var pieces := []
+	while not left.is_empty():
+		var start := _most_isolated(left.keys(), left)
+		left.erase(start)
+		var piece: Array[Vector2i] = [start]
+		var target := randi_range(PIECE_MIN, PIECE_MAX)
+		while piece.size() < target:
+			var options: Array[Vector2i] = []
+			for h in piece:
+				for d in Hex.DIRS:
+					if left.has(h + d) and not options.has(h + d):
+						options.append(h + d)
+			if options.is_empty():
+				break
+			var pick := _most_isolated(options, left)
+			left.erase(pick)
+			piece.append(pick)
+		for h in piece:
+			piece_of[h] = pieces.size()
+		pieces.append(piece)
+
+	# Sobras de 1 célula entram num pedaço vizinho (ele pode passar de PIECE_MAX).
+	for i in pieces.size():
+		if pieces[i].size() != 1:
+			continue
+		var h: Vector2i = pieces[i][0]
+		for d in Hex.DIRS:
+			var j: int = piece_of.get(h + d, -1)
+			if j != -1 and j != i and not pieces[j].is_empty():
+				pieces[j].append(h)
+				piece_of[h] = j
+				pieces[i] = []
+				break
+	return pieces.filter(func(piece): return not piece.is_empty())
+
+
+## A célula com menos vizinhos ainda livres (desempate aleatório).
+func _most_isolated(candidates: Array, left: Dictionary) -> Vector2i:
+	var best: Vector2i = candidates[0]
+	var best_score := INF
+	for h in candidates:
+		var free := 0
+		for d in Hex.DIRS:
+			if left.has(h + d):
+				free += 1
+		var score := free + randf() * 0.5
+		if score < best_score:
+			best_score = score
+			best = h
+	return best
+
+
+func _add_ore(ore: Ore) -> void:
+	ore.z_index = 1
+	add_child(ore)
+	ores.append(ore)
 
 
 ## Limita os minérios soltos: remove os comuns mais antigos primeiro
 ## (os de canhão só saem se não houver mais nenhum comum).
 func _trim_ores() -> void:
 	while ores.size() > MAX_ORES:
-		var victim: Ore = ores[0]
+		var victim: Ore = ores[0] if not ores[0].dragged else ores[1]
 		for ore in ores:
-			if ore.weapon == Weapons.NONE:
+			if not ore.has_special() and not ore.dragged:
 				victim = ore
 				break
 		_remove_ore(victim)
 
 
+## Contato célula a célula: cada célula de asteroide que encosta na nave
+## destrói a célula da nave que ela tocou; depois de CELL_CHARGES destruições
+## ela some. Partes da nave que se soltarem do núcleo viram pedaços soltos.
 func _check_player_collisions() -> void:
-	for a in asteroids.duplicate():
-		if not player.touches(a):
+	var hits := PackedVector2Array()
+	var core_hit := false
+	for a: Asteroid in asteroids.duplicate():
+		var reach := a.bound_radius + player.bound_radius
+		if a.global_position.distance_squared_to(player.global_position) > reach * reach:
 			continue
-		var lost := player.take_damage(a.size)
-		for p in lost:
+		var spent: Array[Vector2i] = []
+		for h in a.cells:
+			var target := player.find_cell_near(a.cell_global(h), HexBody.CONTACT_DIST)
+			if target == HexBody.NO_CELL:
+				continue
+			hits.append(player.cell_global(target))
+			if a.spend_charge(h):
+				spent.append(h)
+			if player.destroy_cell(target):
+				core_hit = true
+				break
+		if not spent.is_empty():
+			for h in spent:
+				fx.burst(a.cell_global(h), a.base_color, 5, 110.0)
+			for piece in a.remove_cells(spent):
+				add_child(piece)
+				asteroids.append(piece)
+			if a.cells.is_empty():
+				asteroids.erase(a)
+				a.queue_free()
+		if core_hit:
+			break
+	if hits.is_empty():
+		return
+
+	for p in hits:
+		fx.burst(p, Weapons.color(Weapons.NONE).lightened(0.3), 6, 160.0)
+	hud.popup("-%d" % hits.size(), UIStyle.RED,
+		_to_screen(player.global_position + Vector2(0, -player.bound_radius - 8.0)), 22)
+	hud.damage_flash(minf(hits.size() / 6.0, 1.0))
+	_shake = maxf(_shake, minf(4.0 + hits.size() * 2.0, 22.0))
+	if core_hit:
+		for p in player.explode():
 			fx.burst(p, Weapons.color(Weapons.NONE).lightened(0.3), 5, 160.0)
-		hud.popup("-%d" % lost.size(), UIStyle.RED,
-			_to_screen(player.global_position + Vector2(0, -player.bound_radius - 8.0)), 22)
-		hud.damage_flash(a.size / 10.0)
-		_shake = minf(6.0 + a.size, 22.0)
-		_destroy_asteroid(a, DROP_ORE_ON_COLLISION)
-		if not player.alive:
-			return
+		return
+	for piece in player.settle_damage():
+		_detach_from_ship(piece)
+
+
+## Parte da nave que perdeu a ligação com o núcleo: vira um pedaço solto,
+## com os canhões que tinha, que pode ser encaixado de novo.
+func _detach_from_ship(piece: Dictionary) -> void:
+	var ore := Ore.new()
+	ore.setup_from(player, piece.keys(), piece)
+	var outward := (ore.global_position - player.global_position).normalized()
+	ore.velocity = player.velocity + outward * randf_range(30.0, 60.0)
+	ore.angular_velocity = randf_range(-0.8, 0.8)
+	_add_ore(ore)
+	_trim_ores()
 
 
 # --- Minérios ---------------------------------------------------------------
 
+## Minérios só flutuam; viram parte da nave quando o raio trator os encaixa.
 func _update_ores(delta: float) -> void:
-	var touching: Array[Ore] = []
 	for ore in ores.duplicate():
-		ore.step(delta, null if game_over else player)
+		ore.step(delta)
 		if ore.life <= 0.0:
 			_remove_ore(ore)
-		elif not game_over and player.touches(ore):
-			touching.append(ore)
-	if touching.is_empty():
+
+
+func _on_ore_attached(ore: Ore, placement: Dictionary) -> void:
+	if not is_instance_valid(ore) or not player.attach_piece(placement):
 		return
-
-	# Absorve todos os minérios do frame de uma vez (bem mais barato em naves grandes).
-	player.absorb_many(touching.map(func(o): return [o.global_position, o.weapon]))
-	collected += touching.size()
+	collected += placement.size()
 	max_cells = maxi(max_cells, player.cells.size())
-
-	# Minério comum: um único "+N" no meio dos que foram pegos neste frame.
-	var plain := 0
-	var plain_center := Vector2.ZERO
-	for ore in touching:
-		if ore.weapon == Weapons.NONE:
-			fx.burst(ore.global_position, Ore.COLOR, 4, 60.0)
-			plain += 1
-			plain_center += ore.global_position
+	var center := Vector2.ZERO
+	for slot in placement:
+		var at := player.cell_global(slot)
+		center += at
+		var w: int = placement[slot]
+		if w == Weapons.NONE:
+			fx.burst(at, Ore.COLOR, 6, 80.0)
 		else:
-			fx.burst(ore.global_position, Weapons.color(ore.weapon), 16, 140.0)
-			hud.popup("+%s" % Weapons.NAMES[ore.weapon], Weapons.color(ore.weapon),
-				_to_screen(ore.global_position), 15)
-		_remove_ore(ore)
-	if plain > 0:
-		hud.popup("+%d" % plain, UIStyle.GREEN, _to_screen(plain_center / plain), mini(13 + plain, 22))
+			fx.burst(at, Weapons.color(w), 16, 140.0)
+			hud.popup("+%s" % Weapons.NAMES[w], Weapons.color(w), _to_screen(at), 15)
+	hud.popup("+%d" % placement.size(), UIStyle.GREEN, _to_screen(center / placement.size()), 14)
+	_remove_ore(ore)
 
 
 func _remove_ore(ore: Ore) -> void:
+	if ore == tractor.ore:
+		tractor.drop()
 	ores.erase(ore)
 	ore.queue_free()
 
@@ -300,11 +444,23 @@ func _despawn_far_objects() -> void:
 			asteroids.erase(a)
 			a.queue_free()
 	for ore in ores.duplicate():
-		if ore.global_position.distance_to(camera.global_position) > limit:
+		if not ore.dragged and ore.global_position.distance_to(camera.global_position) > limit:
 			_remove_ore(ore)
 
 
 # --- Câmera / HUD -----------------------------------------------------------
+
+## Os canhões só miram no que aparece na tela: o alcance deles é maior
+## que a área visível, e asteroides sumiam sem o jogador chegar a vê-los.
+func _asteroids_on_screen() -> Array[Asteroid]:
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	var view := Rect2(camera.get_screen_center_position() - half, half * 2.0)
+	var result: Array[Asteroid] = []
+	for a in asteroids:
+		if view.grow(-a.bound_radius * 0.5).has_point(a.global_position):
+			result.append(a)
+	return result
+
 
 func _view_radius() -> float:
 	return (get_viewport_rect().size / camera.zoom).length() * 0.5
@@ -312,7 +468,7 @@ func _view_radius() -> float:
 
 func _update_camera(delta: float) -> void:
 	# Afasta a câmera conforme a nave cresce.
-	var target_zoom := clampf(260.0 / (player.bound_radius + 210.0), 0.3, 1.2)
+	var target_zoom := clampf(260.0 / (player.bound_radius + 210.0), 0.3, 1.2) * ART_ZOOM
 	camera.zoom = camera.zoom.lerp(Vector2.ONE * target_zoom, 1.0 - exp(-2.0 * delta))
 	camera.global_position = camera.global_position.lerp(player.global_position, 1.0 - exp(-8.0 * delta))
 	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
@@ -338,6 +494,8 @@ func _update_hud() -> void:
 func _on_core_destroyed() -> void:
 	game_over = true
 	pause_menu.enabled = false
+	tractor.drop()
+	tractor.queue_redraw()
 	fx.burst(player.global_position, Player.CORE_COLOR, 60, 260.0)
 	_shake = 25.0
 	hud.damage_flash(1.0)
