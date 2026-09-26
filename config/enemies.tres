@@ -3,4 +3,5 @@
 [ext_resource type="Script" uid="uid://5pwcnwgrkf4v" path="res://scripts/enemy_config.gd" id="1_config"]
 
 [resource]
+resource_local_to_scene = true
 script = ExtResource("1_config")
