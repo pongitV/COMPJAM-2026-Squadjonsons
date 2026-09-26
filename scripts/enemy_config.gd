@@ -14,18 +14,18 @@ extends Resource
 ## Os inimigos tem cronograma proprio (os asteroides comuns nao nascem mais
 ## armados). Nas listas por minuto, a posicao e o minuto da corrida (0 = o
 ## primeiro); depois do ultimo item vale o ultimo.
-## Maximo de inimigos vivos ao mesmo tempo.
-@export var max_alive_by_minute := PackedInt32Array([2, 3, 4, 5, 6])
+## Maximo de inimigos vivos ao mesmo tempo (a corrida tem 3 min: 3 itens).
+@export var max_alive_by_minute := PackedInt32Array([3, 4, 5])
 ## Segundos entre um inimigo e o proximo.
-@export var interval_by_minute := PackedFloat32Array([10.0, 7.0, 5.0, 4.0, 3.5])
+@export var interval_by_minute := PackedFloat32Array([5.0, 4.0, 3.5])
 ## Primeiro inimigo depois de tantos segundos de corrida.
 @export_range(0.0, 60.0, 0.5, "suffix:s") var first_enemy_delay := 4.0
 ## Tipos de inimigo: comum (1 a 3 canhoes comuns) desde o inicio; shotgun
 ## (1 a 2 shotguns), bomba (1 bomba) e misto (canhoes misturados, podendo
-## ter 1 laser) a partir destes minutos.
-@export_range(0, 10, 1) var shotgun_minute := 1
-@export_range(0, 10, 1) var bomb_minute := 2
-@export_range(0, 10, 1) var mixed_minute := 3
+## ter 1 laser) a partir destes minutos (aceita fracao: 1.5 = 1:30).
+@export_range(0.0, 10.0, 0.25, "suffix:min") var shotgun_minute := 0.75
+@export_range(0.0, 10.0, 0.25, "suffix:min") var bomb_minute := 1.5
+@export_range(0.0, 10.0, 0.25, "suffix:min") var mixed_minute := 2.25
 ## Maximo de canhoes de um inimigo misto.
 @export_range(1, 6, 1) var mixed_max_cannons := 3
 ## Celulas de rocha alem das de canhao (sorteado entre os dois).
@@ -138,7 +138,7 @@ func range_of(type: int) -> float:
 ## Sorteia entre os tipos ja liberados: comum (1 a 3 comuns), shotgun (1 a 2),
 ## bomba (1) e misto (2 a mixed_max_cannons de qualquer tipo, no maximo 1 laser).
 func roll_wave_armament(elapsed: float) -> Array[int]:
-	var minute := minute_of(elapsed)
+	var minute := elapsed / 60.0
 	var kinds := ["common"]
 	if minute >= shotgun_minute:
 		kinds.append("shotgun")

@@ -60,8 +60,10 @@ extends Resource
 @export_range(0.0, 360.0, 1.0, "radians_as_degrees") var spawn_side_arc := PI
 
 @export_group("Chegada")
-## Tempo ate a bandeira de chegada (a barra no rodape enche nesse tempo).
-@export_range(10.0, 3600.0, 5.0, "suffix:s") var race_duration := 300.0
+## Tempo ate a bandeira de chegada (a barra no rodape enche nesse tempo): ai
+## entra o chefe. As rampas de dificuldade (AsteroidConfig, EnemyConfig)
+## estao ajustadas para 3 min; se mudar muito este valor, ajuste-as tambem.
+@export_range(10.0, 3600.0, 5.0, "suffix:s") var race_duration := 180.0
 
 
 ## Velocidade de rolagem depois de `elapsed` segundos.

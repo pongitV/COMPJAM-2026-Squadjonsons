@@ -1,9 +1,12 @@
-# COMPJAM-2026-Squadjonsons
+# HexCore
 
-**HexCore**: um jogo inspirado no Asteroids clássico, feito em Godot 4.5. Todo objeto é formado por células hexagonais.
+**HexCore** (COMPJAM 2026, Squadjonsons): um jogo inspirado no Asteroids clássico, feito em Godot 4.7. Todo objeto é formado por células hexagonais.
 
 ## Como rodar
-Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
+Abra a pasta no Godot 4.7 (Importar → `project.godot`) e aperte **F5**.
+
+## Exportar (HexCore.exe)
+O preset **Windows Desktop** (`export_presets.cfg`) exporta para `build/HexCore.exe` com o `.pck` **embutido no .exe** (`binary_format/embed_pck`): o jogo é um arquivo só e continua funcionando se o `.exe` for renomeado ou movido. Se aparecerem `libEGL.dll`/`libGLESv2.dll` ao lado (ANGLE, reserva do OpenGL), mantenha-as na mesma pasta do `.exe`. Antes da primeira exportação, instale os modelos em **Editor → Gerenciar Modelos de Exportação**. Depois: **Projeto → Exportar → Windows Desktop → Exportar Projeto**.
 
 ## Controles
 | Ação | Tecla |
@@ -23,15 +26,17 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 - **Asteroides**: nascem fora da tela com direção, velocidade e tamanho `n` (nº de células, no mínimo 3) aleatórios, e mudam de direção quando batem entre si (armados ou não; quicam e giram conforme o ponto de impacto). São destruídos após `ceil(n^(3/2))` de dano. Ao bater na nave, o asteroide entra destruindo as células que toca, até um limite que cresce com o tamanho dele (padrão: 1 célula a cada 4 do asteroide, no mínimo 1). Ele **não perde células** na batida: toma **2 de dano por célula da nave destruída**. Depois atravessa a nave, sem quicar nem empurrar, e só volta a machucar depois de se afastar (só o MEGATRON barra a nave). Partes da nave que perderem a ligação com a core se soltam como um pedaço flutuante (com seus canhões) e podem ser encaixadas de novo. **O jogo só acaba quando a core é destruída.**
 - **Inimigos (asteroides armados)**: têm canhões (os mesmos da nave) e atiram nela; cada acerto destrói uma célula da nave ou de um pedaço de minério solto (o pedaço se parte se ficar desconectado). Tiros que acertam outros asteroides não causam dano, só os empurram no sentido do tiro (mais fraco quanto maior o asteroide; a bomba empurra para longe da explosão). O cano brilha em vermelho logo antes do tiro. Os asteroides comuns nascem sem canhões; os inimigos seguem ondas por minuto da corrida (`config/enemies.tres`):
 
-| Minuto | Máx. ao mesmo tempo | Inimigos que podem aparecer |
+| Tempo | Máx. ao mesmo tempo / intervalo | Inimigos que podem aparecer |
 |---|---|---|
-| 0–1 | 2 (spawn baixo e controlado) | 1 a 3 canhões comuns |
-| 1–2 | 2 (spawn mais rápido) | idem |
-| 2–3 | 3 | + 1 a 2 shotguns |
-| 3–4 | 3 | + 1 bomba |
-| 4–5 | 4 | + mistos (até 3 canhões, podendo ter 1 laser) |
+| 0:00 | 3 / 5 s | 1 a 3 canhões comuns |
+| 0:45 | 3 / 5 s | + 1 a 2 shotguns |
+| 1:00 | 4 / 4 s | idem |
+| 1:30 | 4 / 4 s | + 1 bomba |
+| 2:00 | 5 / 3,5 s | idem |
+| 2:15 | 5 / 3,5 s | + mistos (até 3 canhões, podendo ter 1 laser) |
+| 3:00 | — | chega o MEGATRON |
 
-- **MEGATRON (chefe)**: na bandeira de chegada (5 min) os asteroides e inimigos param de vir e o MEGATRON entra pela direita: enorme e alto, de casco branco e núcleo como os da nave, com o laser gigante na frente, bombas no meio, canhões comuns no meio-termo e shotguns nas pontas. Ele sobe e desce; antes do laser gigante para, mostra uma faixa de aviso por 3 s e dispara por 5 s reto para a esquerda, cortando a tela. A luta tem 3 fases: primeiro as **torretas** (fáceis de destruir; o laser e o núcleo ficam com escudo), depois o **laser gigante** e por fim o **núcleo**. O casco quebra como o da nave: partes que perdem a ligação com o núcleo se soltam como pedaços que dá para pegar. Destruir o núcleo **vence o jogo** (tela de vitória).
+- **MEGATRON (chefe)**: na bandeira de chegada (3 min) os asteroides e inimigos param de vir e o MEGATRON entra pela direita: enorme e alto, de casco branco e núcleo como os da nave, com o laser gigante na frente, bombas no meio, canhões comuns no meio-termo e shotguns nas pontas. Ele sobe e desce; antes do laser gigante para, mostra uma faixa de aviso por 3 s e dispara por 5 s reto para a esquerda, cortando a tela. A luta tem 3 fases: primeiro as **torretas** (fáceis de destruir; o laser e o núcleo ficam com escudo), depois o **laser gigante** e por fim o **núcleo**. O casco quebra como o da nave: partes que perdem a ligação com o núcleo se soltam como pedaços que dá para pegar. Destruir o núcleo **vence o jogo** (tela de vitória).
 - **Minérios**: todo asteroide destruído pelos canhões se parte em **pedaços** conectados, no mesmo lugar em que estavam: os pequenos geralmente não se partem (4 células = 1 pedaço) e os grandes se partem em mais (16 células ≈ 3 pedaços). Antes, 20% das células viram poeira (sem partir o resto). Os canhões do asteroide são células como as outras: vão no pedaço em que caírem, então um triângulo pode cair inteiro, dividido ou sem algumas células. Os pedaços soltos (e os canhões derrubados pelos inimigos) quicam nos asteroides (com massa bem menor que eles), mas passam por cima da nave sem bater, e são arrastados devagar para a esquerda, saindo da tela se ninguém pegar. Eles não grudam sozinhos: o jogador os pega com o **raio trator** (clique e arraste, dentro do alcance em volta da nave), gira com a roda do mouse (passos de 60°, o grid hexagonal) e solta quando o encaixe fantasma aparecer: todas as células precisam caber e ao menos uma encostar na nave. Um **clique rápido** num pedaço dentro do alcance puxa ele sozinho até a nave, e ele encaixa no primeiro lugar em que couber. Minério verde vira casco; células de canhão viram canhões comuns. **A única forma de ganhar canhões é pegando os dos asteroides.**
 
 ### Canhões
@@ -82,7 +87,7 @@ O canhão comum é o bloco de montar dos outros: canhões comuns adjacentes em *
 ## Tela e moldura do HUD
 O jogo abre em **tela cheia** e escala tudo (UI, sprites, mundo) a partir da resolução base 1280×720 (`canvas_items` + `expand`: telas mais largas ou mais altas mostram mais área, sem distorcer). Isso é aplicado por código em `scripts/display.gd` ao abrir o menu e a partida, então não depende do `project.godot` (que o editor pode sobrescrever).
 
-**HUD**: no topo, à esquerda, o card com o número atual de hexágonos da nave; à direita, o **countdown** até o fim da corrida (5:00 → 0:00; dourado no último minuto, vermelho e pulsando nos últimos 10 s). Durante a luta com o chefe, a vida dele aparece no alto, no centro. No rodapé, a linha de chegada numa moldura longa. As telas de game over e de vitória mostram quanto faltava para a chegada (ou "chegada alcançada"), as estatísticas e os botões lado a lado.
+**HUD**: no topo, à esquerda, o card com o número atual de hexágonos da nave; à direita, o **countdown** até o fim da corrida (3:00 → 0:00; dourado no último minuto, vermelho e pulsando nos últimos 10 s). Durante a luta com o chefe, a vida dele aparece no alto, no centro. No rodapé, a linha de chegada numa moldura longa. As telas de game over e de vitória mostram quanto faltava para a chegada (ou "chegada alcançada"), as estatísticas e os botões lado a lado.
 
 Toda a UI (HUD, telas de fim, menus, tutorial) usa a moldura `art/ui/hex_frame.png` (`HexFrame`):
 - **Escala**: 9-slice. As pontas em chevron e os cantos ficam intactos, a fileira de hexágonos da borda se repete na horizontal e a coluna do meio da ponta se repete na vertical, então a moldura estica em qualquer largura e altura.
@@ -113,19 +118,19 @@ A margem do 9-slice é 12 px (muda por slot em `UISkin.SLICE`). Tamanhos de refe
 ## Parâmetros dos asteroides
 Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite no Inspector (os valores padrão e a explicação de cada um estão em `scripts/asteroid_config.gd`). Para ter presets (fácil, difícil…), duplique o `.tres` e arraste o novo no campo **Asteroid Config** do nó `Game` em `game.tscn`.
 
-`config/asteroids.tres` e `config/enemies.tres` trazem todos os parâmetros escritos, com os mesmos valores dos padrões do código. Se o Godot regravar o arquivo, ele pode omitir os valores iguais ao padrão, mas o Inspector continua mostrando todos. Curva padrão (o relógio começa depois do tutorial): começa leve e aperta rápido.
+O Godot grava no `.tres` só os valores diferentes do padrão do código; o Inspector mostra todos. Curva atual, com o chefe aos 3 min (o relógio começa depois do tutorial): começa leve e aperta rápido.
 
-| Tempo | Asteroide a cada | Multiplicador (HP e velocidade) | Tamanho máx. (sem canhões) | Inimigos vivos / intervalo |
-|---|---|---|---|---|
-| 0:00 | ~1,3 s | 1,0x | 3 | 2 / 10 s |
-| 1:00 | ~0,8 s | 1,3x | 10 | 3 / 7 s (entra shotgun) |
-| 2:00 | ~0,57 s | 1,6x | 18 | 4 / 5 s (entra bomba) |
-| 3:00 | ~0,57 s | 1,9x | 25 | 5 / 4 s (entram mistos, com laser) |
-| 4:00 | ~0,57 s | 2,0x | 33 | 6 / 3,5 s |
+| Tempo | Asteroide a cada | Multiplicador (HP e velocidade, 0.2/min) | Tamanho máx. (sem canhões) |
+|---|---|---|---|
+| 0:00 | ~1,3 s | 1,0x | 3 |
+| 1:00 | ~0,86 s | 1,2x | 13 |
+| 1:30 | ~0,69 s | 1,3x | 18 |
+| 2:00 | ~0,57 s (mínimo) | 1,4x | 23 |
+| 3:00 | chefe | 1,6x | 33 |
 
 | Grupo | Parâmetros |
 |---|---|
-| Dificuldade com o tempo | multiplicador que começa em 1 e sobe X por minuto (padrão +30%/min, até 2x em 3:20); escolha se ele aumenta HP, velocidade e/ou frequência de spawn |
+| Dificuldade com o tempo | multiplicador que começa em 1 e sobe X por minuto (padrão do código +50%/min, até 2x; o `asteroids.tres` usa +20%/min); escolha se ele aumenta HP, velocidade e/ou frequência de spawn |
 | Spawn | atraso do primeiro, intervalo inicial/mínimo, quanto acelera por segundo, variação aleatória, multiplicador final da frequência (`spawn_rate`, padrão 0.7 = 30% menos asteroides), **máximo de asteroides vivos**, distância de spawn/despawn, desvio da mira em direção à nave |
 | Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
 | Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
@@ -134,14 +139,14 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 | Minério | fração perdida, em quantos pedaços se parte (tamanho até o qual não se parte, células por pedaço a mais, variação), velocidade dos pedaços, máximo na tela, massa das células de minério e elasticidade da batida com asteroides e com a nave |
 
 ## Viagem (fundo e chegada)
-A câmera fica parada e só o fundo rola, dando a impressão de que a nave avança para a direita; a nave se move livre, mas presa na tela. Para reforçar, os asteroides nascem de preferência à frente (direita) e são arrastados devagar para a esquerda. No rodapé, o marcador da nave anda até a bandeira de chegada e a alcança aos 5 min. Tudo isso fica em `config/travel.tres` (explicações em `scripts/travel_config.gd`), com presets pelo campo **Travel Config** do nó `Game`.
+A câmera fica parada e só o fundo rola, dando a impressão de que a nave avança para a direita; a nave se move livre, mas presa na tela. Para reforçar, os asteroides nascem de preferência à frente (direita) e são arrastados devagar para a esquerda. No rodapé, o marcador da nave anda até a bandeira de chegada e a alcança aos 3 min. Tudo isso fica em `config/travel.tres` (explicações em `scripts/travel_config.gd`), com presets pelo campo **Travel Config** do nó `Game`.
 
 | Grupo | Parâmetros |
 |---|---|
 | Fundo | velocidade inicial, aumento por minuto e máxima, direção do avanço, parallax das estrelas distantes/próximas, quantidade de estrelas, rastro das estrelas, linhas de velocidade (quantidade, opacidade, velocidade) |
 | Efeitos de velocidade | riscos atrás da nave e dos asteroides (quantidade, comprimento, opacidade), partículas de rastro da nave por segundo |
 | Fluxo | arrasto dos asteroides e dos minérios soltos para trás (padrão 45 px/s cada), chance de nascerem à frente (70%) e abertura desse arco (120°), abertura total onde podem nascer (`spawn_side_arc`, 180° = só da metade da tela para a frente) |
-| Chegada | tempo até a bandeira (padrão 300 s) |
+| Chegada | tempo até a bandeira, quando entra o chefe (padrão 180 s; as rampas de dificuldade estão ajustadas para ele) |
 
 ## Parâmetros dos canhões
 Ficam em `config/cannons.tres` (padrões e explicação em `scripts/cannon_config.gd`), com presets pelo campo **Cannon Config** do nó `Game`. Dano é medido em "tiros do canhão comum".

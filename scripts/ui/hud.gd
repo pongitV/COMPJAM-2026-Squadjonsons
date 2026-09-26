@@ -119,7 +119,7 @@ func set_countdown(elapsed: float, duration: float) -> void:
 		countdown_card.set_text("0:00", UIStyle.GOLD)
 		return
 	var color := UIStyle.RED if left <= COUNTDOWN_ALERT else UIStyle.GOLD if left <= COUNTDOWN_WARN else UIStyle.TEXT
-	# Arredonda para cima: mostra 5:00 no inicio e 0:01 no ultimo segundo.
+	# Arredonda para cima: mostra 3:00 no inicio e 0:01 no ultimo segundo.
 	var seconds := ceili(left)
 	countdown_card.set_text(UIStyle.fmt_time(seconds), color)
 	# Nos ultimos segundos, pulsa a cada segundo.

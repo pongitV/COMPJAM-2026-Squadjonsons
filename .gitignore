@@ -2,6 +2,8 @@
 .godot/
 /android/
 *.tmp
+# Exportacoes (HexCore.exe)
+/build/
 
 # Outro projeto Godot, mantido fora deste repositorio
 CaraDePaisagem/

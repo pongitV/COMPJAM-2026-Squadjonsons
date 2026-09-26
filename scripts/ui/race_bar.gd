@@ -10,7 +10,7 @@ const FLAG_SIZE := Vector2(26, 30)
 const MARKER_SIZE := 22.0
 
 var progress := 0.0
-var _duration := 300.0
+var _duration := 180.0
 var _marker: HexIcon
 var _flag: FlagIcon
 var _left: Label
