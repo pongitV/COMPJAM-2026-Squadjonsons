@@ -47,7 +47,7 @@ func _init() -> void:
 	next.add_theme_constant_override("separation", 8)
 	col.add_child(next)
 	next.add_child(UIStyle.label("PRÓXIMO", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION))
-	_pips = HexPips.new(Weapons.ASTEROIDS_PER_COMMON, Weapons.color(Weapons.COMMON))
+	_pips = HexPips.new(Weapons.config.asteroids_per_common, Weapons.color(Weapons.COMMON))
 	next.add_child(_pips)
 
 

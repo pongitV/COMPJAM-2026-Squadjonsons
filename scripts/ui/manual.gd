@@ -119,10 +119,13 @@ static func _how_to_play() -> Control:
 static func _cannons() -> Control:
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", 10)
-	_line(list, Art.COMMON, "Tiro único. Ganhe 1 a cada %d asteroides." % Weapons.ASTEROIDS_PER_COMMON,
+	var cfg := Weapons.config
+	_line(list, Art.COMMON, "Tiro único. Ganhe 1 a cada %d asteroides." % cfg.asteroids_per_common,
 		"COMUM", Weapons.color(Weapons.COMMON))
-	_line(list, Art.SHOTGUN, "6 tiros em leque, alcance curto.", "SHOTGUN", Weapons.color(Weapons.SHOTGUN))
-	_line(list, Art.LASER, "Raio para fora da nave por 3 s.", "LASER", Weapons.color(Weapons.LASER))
+	_line(list, Art.SHOTGUN, "%d tiros em leque, alcance curto." % cfg.shotgun_pellets,
+		"SHOTGUN", Weapons.color(Weapons.SHOTGUN))
+	_line(list, Art.LASER, "Raio para fora da nave por %s s." % String.num(cfg.laser_duration, 1),
+		"LASER", Weapons.color(Weapons.LASER))
 	_line(list, Art.BOMB, "Míssil lento com dano em área.", "BOMBA", Weapons.color(Weapons.BOMB))
 	_line(list, Art.HULL, "Não atira, mas protege o núcleo.", "CASCO", Weapons.color(Weapons.NONE))
 	var note := UIStyle.label("Minério colorido vira o canhão da mesma cor.", 13, UIStyle.TEXT_DIM)

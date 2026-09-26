@@ -5,6 +5,20 @@ extends Resource
 ## para criar presets e arraste o novo no campo "Asteroid Config" do no Game).
 ## Os valores abaixo sao os padroes usados quando o .tres nao muda nada.
 
+@export_group("Dificuldade com o tempo")
+## Multiplicador de dificuldade: comeca em 1 e sobe tanto por minuto de
+## partida (0.1 = +10% por minuto; 0 = desligado). Ele multiplica o que
+## estiver marcado abaixo, somado as rampas proprias de spawn e tamanho.
+@export_range(0.0, 2.0, 0.01, "suffix:/min") var difficulty_per_minute := 0.1
+## Teto do multiplicador (2.5 = no maximo 2,5x).
+@export_range(1.0, 10.0, 0.1) var difficulty_max := 2.5
+## Asteroides nascem com mais HP (e valem mais pontos).
+@export var difficulty_scales_hp := true
+## Asteroides nascem mais rapidos.
+@export var difficulty_scales_speed := true
+## Asteroides nascem com mais frequencia (respeitando spawn_interval_min).
+@export var difficulty_scales_spawn := true
+
 @export_group("Spawn")
 ## Segundos ate o primeiro asteroide aparecer.
 @export_range(0.0, 10.0, 0.1, "suffix:s") var first_spawn_delay := 1.0
@@ -91,9 +105,25 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var special_drop_max := 0.7
 
 
+## Multiplicador de dificuldade depois de `elapsed` segundos de partida.
+func difficulty(elapsed: float) -> float:
+	return minf(1.0 + elapsed / 60.0 * difficulty_per_minute, maxf(difficulty_max, 1.0))
+
+
+func hp_scale(elapsed: float) -> float:
+	return difficulty(elapsed) if difficulty_scales_hp else 1.0
+
+
+func speed_scale(elapsed: float) -> float:
+	return difficulty(elapsed) if difficulty_scales_speed else 1.0
+
+
 ## Tempo ate o proximo spawn.
 func spawn_interval(elapsed: float) -> float:
-	var base := maxf(spawn_interval_min, spawn_interval_start - elapsed * spawn_interval_decay)
+	var base := spawn_interval_start - elapsed * spawn_interval_decay
+	if difficulty_scales_spawn:
+		base /= difficulty(elapsed)
+	base = maxf(spawn_interval_min, base)
 	return base * randf_range(1.0 - spawn_interval_jitter, 1.0 + spawn_interval_jitter)
 
 
@@ -109,8 +139,9 @@ func roll_size(elapsed: float, cannons: int) -> int:
 	return min_size + int(pow(randf(), size_bias) * (top - min_size + 1))
 
 
-func max_hp_for(cells: int) -> int:
-	return maxi(1, ceili(hp_multiplier * pow(cells, hp_exponent)))
+## `scale` = hp_scale() da hora em que o asteroide nasceu.
+func max_hp_for(cells: int, scale: float = 1.0) -> int:
+	return maxi(1, ceili(hp_multiplier * scale * pow(cells, hp_exponent)))
 
 
 func score_for(max_hp: int) -> int:

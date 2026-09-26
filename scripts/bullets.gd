@@ -10,15 +10,17 @@ const HIT_DIST := Hex.SIZE * 0.87 + RADIUS
 var _pos := PackedVector2Array()
 var _vel := PackedVector2Array()
 var _life := PackedFloat32Array()
+var _damage := PackedFloat32Array()
 var _color := PackedColorArray()
 
 
-func spawn(origin: Vector2, velocity: Vector2, life: float, color: Color) -> void:
+func spawn(origin: Vector2, velocity: Vector2, life: float, damage: float, color: Color) -> void:
 	if _pos.size() >= MAX_BULLETS:
 		return
 	_pos.append(origin)
 	_vel.append(velocity)
 	_life.append(life)
+	_damage.append(damage)
 	_color.append(color)
 
 
@@ -36,7 +38,7 @@ func step(delta: float, asteroids: Array[Asteroid]) -> void:
 					continue
 				var reach := a.bound_radius + RADIUS
 				if p.distance_squared_to(a.global_position) < reach * reach and a.has_cell_near(p, HIT_DIST):
-					a.hit()
+					a.apply_damage(_damage[i])
 					dead = true
 					break
 		if dead:
@@ -44,10 +46,12 @@ func step(delta: float, asteroids: Array[Asteroid]) -> void:
 			_pos[i] = _pos[last]
 			_vel[i] = _vel[last]
 			_life[i] = _life[last]
+			_damage[i] = _damage[last]
 			_color[i] = _color[last]
 			_pos.resize(last)
 			_vel.resize(last)
 			_life.resize(last)
+			_damage.resize(last)
 			_color.resize(last)
 		else:
 			i += 1

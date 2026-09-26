@@ -107,11 +107,11 @@ func is_armed(h: Vector2i) -> bool:
 ## com ela); os demais apontam para o alvo, ou para fora quando sem alvo.
 func barrel_dir(h: Vector2i) -> Vector2:
 	var d := cell_local(h).rotated(rotation)
-	var w := weapon_at(h)
-	if Weapons.PROJECTILE_SPEED.has(w):
+	var speed := Weapons.config.projectile_speed(weapon_at(h))
+	if speed > 0.0:
 		var target := target_of(h)
 		if target != null:
-			d = _lead(cell_global(h), target, Weapons.PROJECTILE_SPEED[w]) - cell_global(h)
+			d = _lead(cell_global(h), target, speed) - cell_global(h)
 	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT.rotated(rotation)
 
 
@@ -140,9 +140,9 @@ func update_targets(delta: float, asteroids: Array[Asteroid]) -> void:
 		var w: int = cells[h]
 		var origin := cell_global(h)
 		var best: Asteroid = null
-		var best_dist: float = Weapons.RANGE[w]
+		var best_dist := Weapons.config.range_of(w)
 		if w == Weapons.LASER:
-			var tip := origin + barrel_dir(h) * Weapons.LASER_LENGTH
+			var tip := origin + barrel_dir(h) * best_dist
 			for a in asteroids:
 				if a.hp <= 0:
 					continue
@@ -176,10 +176,10 @@ func fire() -> Array:
 			continue
 		var w: int = cells[h]
 		var origin := muzzle(h)
-		_cooldowns[h] = Weapons.COOLDOWN[w]
+		_cooldowns[h] = Weapons.config.cooldown(w)
 		var target_pos := target.global_position
 		if w != Weapons.LASER:
-			target_pos = _lead(origin, target, Weapons.PROJECTILE_SPEED[w])
+			target_pos = _lead(origin, target, Weapons.config.projectile_speed(w))
 		shots.append({"type": w, "cell": h, "origin": origin, "dir": barrel_dir(h), "target_pos": target_pos})
 	return shots
 
@@ -424,7 +424,7 @@ func _draw_cannons() -> void:
 		var uv := Art.cannon_uv(w)
 		for offset in OUTLINE_OFFSETS:
 			_cannon_sprites.add_quad(corners.map(func(p): return p + offset), uv, OUTLINE_COLOR)
-		var charged: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]
+		var charged: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.config.cooldown(w)
 		var shade := (0.6 + 0.4 * charged) if is_armed(h) else 0.35
 		_cannon_sprites.add_quad(corners, uv, Color(shade, shade, shade))
 	_cannon_sprites.draw(get_canvas_item(), Art.cannon_atlas())

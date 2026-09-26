@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="CannonConfig" format=3 uid="uid://c3bv52awnduxa"]
+
+[ext_resource type="Script" uid="uid://domm8sh53p0qd" path="res://scripts/cannon_config.gd" id="1_config"]
+
+[resource]
+script = ExtResource("1_config")

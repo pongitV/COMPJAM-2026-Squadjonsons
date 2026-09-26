@@ -7,6 +7,8 @@ const ART_ZOOM := 1.2
 ## Parametros dos asteroides (spawn, tamanho, HP, velocidade, minerio).
 ## Troque por outro preset .tres no Inspector do no Game.
 @export var asteroid_config: AsteroidConfig = preload("res://config/asteroids.tres")
+## Parametros dos canhoes (recarga, dano, alcance...).
+@export var cannon_config: CannonConfig = preload("res://config/cannons.tres")
 
 var player: Player
 var bullets: Bullets
@@ -42,6 +44,7 @@ func _ready() -> void:
 	randomize()
 	_cfg = asteroid_config
 	Asteroid.config = _cfg
+	Weapons.config = cannon_config
 	_spawn_timer = _cfg.first_spawn_delay
 	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -193,15 +196,20 @@ func _fire_shot(shot: Dictionary) -> void:
 	if shot.type == Weapons.COMMON or shot.type == Weapons.SHOTGUN:
 		cannon_sfx.play()
 	
+	var cfg := Weapons.config
 	match shot.type:
 		Weapons.COMMON:
-			bullets.spawn(origin, dir * Weapons.BULLET_SPEED + player.velocity, Weapons.BULLET_LIFE, color)
+			bullets.spawn(origin, dir * cfg.common_speed + player.velocity,
+				cfg.projectile_life(Weapons.COMMON), cfg.damage(Weapons.COMMON), color)
 		Weapons.SHOTGUN:
-			for i in Weapons.PELLETS:
-				var t := float(i) / (Weapons.PELLETS - 1) - 0.5
-				var pellet_dir := dir.rotated(t * Weapons.PELLET_SPREAD + randf_range(-0.05, 0.05))
-				var speed := Weapons.PELLET_SPEED * randf_range(0.9, 1.1)
-				bullets.spawn(origin, pellet_dir * speed + player.velocity, Weapons.PELLET_LIFE, color)
+			var pellets := cfg.shotgun_pellets
+			for i in pellets:
+				# Espalhados de -spread/2 a +spread/2 (um so vai reto).
+				var t := float(i) / (pellets - 1) - 0.5 if pellets > 1 else 0.0
+				var pellet_dir := dir.rotated(t * cfg.shotgun_spread + randf_range(-0.05, 0.05))
+				var speed := cfg.shotgun_speed * randf_range(0.9, 1.1)
+				bullets.spawn(origin, pellet_dir * speed + player.velocity,
+					cfg.projectile_life(Weapons.SHOTGUN), cfg.damage(Weapons.SHOTGUN), color)
 		Weapons.LASER:
 			lasers.start(shot.cell)
 			if not laser_sfx.playing:
@@ -235,14 +243,14 @@ func _spawn_asteroids(delta: float) -> void:
 		cannons += count
 	var n := _cfg.roll_size(elapsed, cannons)
 	var a := Asteroid.new()
-	a.setup(n)
+	a.setup(n, _cfg.hp_scale(elapsed))
 
 	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
 	a.position = player.global_position + Vector2.from_angle(randf() * TAU) * dist
 	# Vai na direcao geral do jogador, com um desvio aleatorio.
 	var heading := (player.global_position - a.position).normalized() \
 		.rotated(randf_range(-_cfg.aim_spread, _cfg.aim_spread))
-	a.velocity = heading * _cfg.roll_speed(n)
+	a.velocity = heading * _cfg.roll_speed(n) * _cfg.speed_scale(elapsed)
 	a.angular_velocity = _cfg.roll_spin(n)
 	a.rotation = randf() * TAU
 	add_child(a)
@@ -265,7 +273,7 @@ func _destroy_asteroid(a: Asteroid) -> void:
 		destroyed += 1
 		hud.popup("+%s" % UIStyle.fmt_int(points), UIStyle.GOLD, _to_screen(a.global_position),
 			clampi(14 + (a.size >> 1), 14, 24))
-		if destroyed % Weapons.ASTEROIDS_PER_COMMON == 0:
+		if destroyed % Weapons.config.asteroids_per_common == 0:
 			_grant_common_cannon()
 	_break_into_ore(a)
 	a.queue_free()
@@ -288,7 +296,7 @@ func _break_into_ore(a: Asteroid) -> void:
 	# As vezes uma das celulas e de canhao especial (mais chance em asteroides maiores).
 	var weapons := {}
 	if randf() < _cfg.special_drop_chance(a.size):
-		weapons[kept[randi() % kept.size()]] = Weapons.roll_special()
+		weapons[kept[randi() % kept.size()]] = Weapons.config.roll_special()
 
 	for group in _split_into_pieces(kept):
 		var ore := Ore.new()
@@ -539,7 +547,7 @@ func _update_hud() -> void:
 	hud.cells_card.set_sub("COLETADOS %s" % UIStyle.fmt_int(collected))
 	hud.time_card.set_text(UIStyle.fmt_time(elapsed))
 	hud.cannon_card.set_counts(player.weapon_counts())
-	hud.cannon_card.set_progress(destroyed % Weapons.ASTEROIDS_PER_COMMON)
+	hud.cannon_card.set_progress(destroyed % Weapons.config.asteroids_per_common)
 
 
 func _on_core_destroyed() -> void:

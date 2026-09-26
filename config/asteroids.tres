@@ -1,6 +1,11 @@
-[gd_resource type="Resource" script_class="AsteroidConfig" format=3]
+[gd_resource type="Resource" script_class="AsteroidConfig" format=3 uid="uid://dnr0a5cu0vbv4"]
 
-[ext_resource type="Script" path="res://scripts/asteroid_config.gd" id="1_config"]
+[ext_resource type="Script" uid="uid://bub5hlb16jrm0" path="res://scripts/asteroid_config.gd" id="1_config"]
 
 [resource]
 script = ExtResource("1_config")
+difficulty_per_minute = 0.2
+spawn_interval_start = 0.9
+spawn_interval_jitter = 0.5
+aim_spread = 0.08726646259971647
+speed_min = 60.0

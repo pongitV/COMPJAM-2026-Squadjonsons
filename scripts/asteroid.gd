@@ -16,13 +16,16 @@ static var config: AsteroidConfig = preload("res://config/asteroids.tres")
 var size := 1
 var max_hp := 1
 var hp := 1
+## Multiplicador de HP da dificuldade na hora em que nasceu (pedacos herdam).
+var hp_scale := 1.0
 var base_color := Color.GRAY
 ## Vector2i -> cargas restantes daquela celula contra a nave.
 var charges := {}
 var _damage_accum := 0.0
 
 
-func setup(n: int) -> void:
+func setup(n: int, hp_multiplier: float = 1.0) -> void:
+	hp_scale = hp_multiplier
 	cells.clear()
 	cells[Vector2i.ZERO] = true
 	# Cresce a partir de uma celula, colando vizinhos aleatorios.
@@ -34,7 +37,7 @@ func setup(n: int) -> void:
 		charges[h] = config.cell_charges
 
 	size = cells.size()
-	max_hp = config.max_hp_for(size)
+	max_hp = config.max_hp_for(size, hp_scale)
 	hp = max_hp
 	base_color = ART_COLOR
 	recenter()
@@ -48,13 +51,8 @@ func step(delta: float) -> void:
 		_update_tint()
 
 
-## Recebe um disparo. Retorna true se foi destruido.
-func hit() -> bool:
-	apply_damage(1.0)
-	return hp <= 0
-
-
-## Dano em unidades de "disparo". Aceita fracoes (dano continuo do laser).
+## Dano em unidades de "disparo do canhao comum". Aceita fracoes (dano
+## continuo do laser).
 func apply_damage(amount: float) -> void:
 	_damage_accum += amount
 	var whole := int(_damage_accum)
@@ -103,6 +101,7 @@ func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
 		cells[h] = true
 		charges[h] = source.charges[h]
 	base_color = source.base_color
+	hp_scale = source.hp_scale
 	rotation = source.rotation
 	position = source.position
 	center_offset = source.center_offset
@@ -114,7 +113,7 @@ func _split_from(source: Asteroid, keys: Array, hp_ratio: float) -> void:
 
 func _resize(hp_ratio: float) -> void:
 	size = cells.size()
-	max_hp = config.max_hp_for(size)
+	max_hp = config.max_hp_for(size, hp_scale)
 	hp = maxi(1, ceili(hp_ratio * max_hp))
 	_update_tint()
 

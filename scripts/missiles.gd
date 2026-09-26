@@ -15,9 +15,9 @@ func launch(origin: Vector2, target: Vector2, inherited_velocity: Vector2) -> vo
 		dir = Vector2.RIGHT
 	_items.append({
 		"pos": origin,
-		"vel": dir * Weapons.MISSILE_SPEED + inherited_velocity * 0.5,
+		"vel": dir * Weapons.config.bomb_speed + inherited_velocity * 0.5,
 		"target": target,
-		"life": Weapons.MISSILE_LIFE,
+		"life": Weapons.config.projectile_life(Weapons.BOMB),
 	})
 
 
@@ -45,20 +45,21 @@ func _touches_asteroid(p: Vector2, asteroids: Array[Asteroid]) -> bool:
 
 
 func _explode(at: Vector2, asteroids: Array[Asteroid], fx: Fx) -> void:
+	var radius := Weapons.config.bomb_radius
 	for a in asteroids:
-		if a.hp > 0 and _in_blast(a, at):
-			a.apply_damage(Weapons.BLAST_DAMAGE)
+		if a.hp > 0 and _in_blast(a, at, radius):
+			a.apply_damage(Weapons.config.damage(Weapons.BOMB))
 	var color := Weapons.color(Weapons.BOMB)
 	fx.burst(at, color, 40, 320.0)
 	fx.burst(at, Color.WHITE, 12, 160.0)
-	fx.ring(at, Weapons.BLAST_RADIUS, color)
+	fx.ring(at, radius, color)
 
 
-func _in_blast(a: Asteroid, at: Vector2) -> bool:
-	if at.distance_to(a.global_position) > Weapons.BLAST_RADIUS + a.bound_radius:
+func _in_blast(a: Asteroid, at: Vector2, radius: float) -> bool:
+	if at.distance_to(a.global_position) > radius + a.bound_radius:
 		return false
 	for h in a.cells:
-		if a.cell_global(h).distance_to(at) < Weapons.BLAST_RADIUS:
+		if a.cell_global(h).distance_to(at) < radius:
 			return true
 	return false
 

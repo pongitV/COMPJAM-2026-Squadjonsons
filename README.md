@@ -35,7 +35,8 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 | `scripts/art.gd`, `art/` | Artes das células (flores de 19 hexágonos) e dos canhões, juntadas em atlas |
 | `scripts/hex_body.gd` | Base de todo objeto feito de células: desenho e colisão |
 | `scripts/player.gd` | Movimento, giro, canhões por célula (mira automática), encaixe de pedaços e dano |
-| `scripts/weapons.gd` | Tipos de canhão: cores, recarga e números de balanceamento |
+| `scripts/weapons.gd` | Tipos de canhão: cores e nomes |
+| `scripts/cannon_config.gd`, `config/cannons.tres` | Parâmetros dos canhões (recarga, dano, alcance…), editáveis no Inspector |
 | `scripts/asteroid.gd` | Geração aleatória, HP, dano na nave e batidas entre asteroides |
 | `scripts/asteroid_config.gd`, `config/asteroids.tres` | Todos os parâmetros dos asteroides (spawn, tamanho, HP, velocidade, minério), editáveis no Inspector |
 | `scripts/ore.gd` | Pedaço de minério solto (flutua até ser arrastado) |
@@ -75,6 +76,7 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 
 | Grupo | Parâmetros |
 |---|---|
+| Dificuldade com o tempo | multiplicador que começa em 1 e sobe X por minuto (padrão +10%/min, até 2,5x); escolha se ele aumenta HP, velocidade e/ou frequência de spawn |
 | Spawn | atraso do primeiro, intervalo inicial/mínimo, quanto acelera por segundo, variação aleatória, **máximo de asteroides vivos**, distância de spawn/despawn, desvio da mira em direção à nave |
 | Tamanho | mínimo, teto absoluto, máximo no início, crescimento por tempo e por canhão, `size_bias` (controla o **tamanho médio**: ≈ mín + (máx − mín) / (bias + 1)) |
 | Vida e pontos | HP = ⌈multiplicador × células^expoente⌉, pontos por HP |
@@ -82,7 +84,19 @@ Tudo sobre os asteroides fica em `config/asteroids.tres`: abra no Godot e edite 
 | Dano na nave | quantas células da nave cada célula do asteroide destrói |
 | Minério | fração perdida, tamanho e velocidade dos pedaços, máximo na tela, chance de canhão especial |
 
-Os demais parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: dano, recarga e alcance dos canhões em `weapons.gd`, `SIZE` em `hex.gd`).
+## Parâmetros dos canhões
+Ficam em `config/cannons.tres` (padrões e explicação em `scripts/cannon_config.gd`), com presets pelo campo **Cannon Config** do nó `Game`. Dano é medido em "tiros do canhão comum".
+
+| Grupo | Parâmetros |
+|---|---|
+| Geral | multiplicador de dano e de cadência de todos os canhões |
+| Comum | recarga, dano, alcance, velocidade do tiro |
+| Shotgun | recarga, nº de projéteis, dano por projétil, alcance, abertura do leque, velocidade |
+| Laser | recarga, duração do raio, dano por segundo, comprimento |
+| Bomba | recarga, dano e raio da explosão, alcance, velocidade do míssil |
+| Ganho de canhões | asteroides por canhão comum, chance relativa de cada canhão especial |
+
+Os demais parâmetros de balanceamento ficam como `const` no topo de cada script (ex.: `SIZE` em `hex.gd`, movimento da nave em `player.gd`).
 
 ## Créditos
 - Fonte [Hexagon](https://fontstruct.com/fontstructions/show/1727445) por "twannieboy", sob a licença Creative Commons BY-NC-SA 3.0 (uso não comercial). Licença e leia-me em `fonts/Hexagon-*.txt`. Ela só tem letras sem acento, então os textos do jogo aparecem sem acentos.
