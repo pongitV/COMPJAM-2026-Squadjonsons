@@ -89,11 +89,18 @@ extends Resource
 @export_range(1, 10, 1) var cell_charges := 2
 
 @export_group("Minerio")
-## Fracao das celulas que se perde quando o asteroide vira minerio.
+## Fracao das celulas que se perde quando o asteroide vira minerio (canhoes
+## incluidos: sao celulas como as outras). So somem celulas cuja perda nao
+## parte o que sobra.
 @export_range(0.0, 1.0, 0.05) var ore_loss := 0.2
-## Tamanho (em celulas) dos pedacos de minerio.
-@export_range(1, 10, 1) var piece_min := 2
-@export_range(1, 10, 1) var piece_max := 4
+## Em quantos pedacos o asteroide se parte: 1 ate `no_split_size` celulas e
+## mais um a cada `cells_per_extra_piece` celulas acima disso. Com os padroes:
+## 4 celulas = 1 pedaco, 10 = 2, 16 = 3, 40 = 7.
+@export_range(1, 50, 1) var no_split_size := 4
+@export_range(1.0, 30.0, 0.5) var cells_per_extra_piece := 6.0
+## Variacao aleatoria no numero de pedacos (0.5 = ate meio pedaco para mais
+## ou para menos, arredondado no sorteio).
+@export_range(0.0, 3.0, 0.1) var piece_count_jitter := 0.5
 ## Velocidade com que os pedacos se afastam do asteroide destruido.
 @export_range(0.0, 300.0, 1.0, "suffix:px/s") var ore_speed_min := 20.0
 @export_range(0.0, 300.0, 1.0, "suffix:px/s") var ore_speed_max := 55.0
@@ -152,3 +159,12 @@ func roll_speed(cells: int) -> float:
 
 func roll_spin(cells: int) -> float:
 	return randf_range(-spin_max, spin_max) / sqrt(cells)
+
+
+## Quantos pedacos de minerio um asteroide de `cells` celulas vira (sorteado:
+## a media sobe com o tamanho; o arredondamento e aleatorio na proporcao).
+func roll_piece_count(cells: int) -> int:
+	var expected := 1.0 + maxf(0.0, cells - no_split_size) / cells_per_extra_piece
+	expected = maxf(1.0, expected + randf_range(-piece_count_jitter, piece_count_jitter))
+	var whole := int(expected)
+	return whole + (1 if randf() < expected - whole else 0)

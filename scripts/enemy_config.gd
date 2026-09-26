@@ -1,7 +1,8 @@
 class_name EnemyConfig
 extends Resource
-## Asteroides armados: com que canhoes nascem, quao forte atiram na nave e o
-## que soltam ao serem destruidos. Quase tudo vai de um valor "inicio" a um
+## Asteroides armados: com que canhoes nascem e quao forte atiram na nave (ao
+## serem destruidos, os canhoes se partem junto com as outras celulas; ver
+## AsteroidConfig, grupo Minerio). Quase tudo vai de um valor "inicio" a um
 ## valor "fim" conforme o progresso da barra de chegada (0 na largada, 1 na
 ## bandeira; depois fica no "fim"). Edite em config/enemies.tres.
 ##
@@ -54,11 +55,6 @@ extends Resource
 @export_range(5.0, 300.0, 1.0, "suffix:px") var bomb_radius := 32.0
 ## Tempo que o laser inimigo precisa ficar sobre uma celula para destrui-la.
 @export_range(0.05, 5.0, 0.05, "suffix:s") var laser_cell_time := 0.45
-
-@export_group("Drop")
-## Chance de cada canhao cair como minerio (o triangulo inteiro) quando o
-## asteroide e destruido. Canhoes que nao caem viram minerio comum.
-@export_range(0.0, 1.0, 0.05) var drop_chance := 1.0
 
 
 func armed_chance(progress: float) -> float:

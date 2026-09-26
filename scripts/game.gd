@@ -52,6 +52,7 @@ var _cfg: AsteroidConfig
 
 
 func _ready() -> void:
+	Display.setup(get_tree())
 	randomize()
 	_cfg = asteroid_config
 	Asteroid.config = _cfg
@@ -193,9 +194,17 @@ func _physics_process(delta: float) -> void:
 		if a.hp <= 0:
 			_destroy_asteroid(a)
 
-	var shot_cells := enemy_shots.step(delta, player, fx)
+	# Tiros inimigos acertam a nave e os minerios soltos.
+	var targets: Array = [player] if player.alive else []
+	targets.append_array(ores)
+	var shot_hits := enemy_shots.step(delta, targets, fx)
+	for body in shot_hits:
+		if body is Ore and is_instance_valid(body):
+			_chip_ore(body, shot_hits[body].keys())
 	if not game_over:
-		_hurt_player(shot_cells)
+		var player_cells: Array[Vector2i] = []
+		player_cells.assign(shot_hits.get(player, {}).keys())
+		_hurt_player(player_cells)
 		_check_player_collisions()
 	_update_ores(delta)
 	_scroll_background(delta)
@@ -307,13 +316,15 @@ func _spawn_asteroids(delta: float) -> void:
 	var a := Asteroid.new()
 	a.setup(n, _cfg.hp_scale(elapsed), enemy_config.roll_armament(n, _progress()))
 
-	# Em volta da tela (a camera e fixa; a nave pode estar perto da borda).
+	# Em volta da tela (a camera e fixa; a nave pode estar perto da borda), de
+	# preferencia a frente, no sentido do avanco.
 	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
-	a.position = camera.global_position + Vector2.from_angle(randf() * TAU) * dist
-	# Vai na direcao geral do jogador, com um desvio aleatorio.
+	a.position = camera.global_position + Vector2.from_angle(travel_config.roll_spawn_angle()) * dist
+	# Vai na direcao geral do jogador, com um desvio aleatorio, e e arrastado
+	# devagar para tras (parece que a nave passa por ele).
 	var heading := (player.global_position - a.position).normalized() \
 		.rotated(randf_range(-_cfg.aim_spread, _cfg.aim_spread))
-	a.velocity = heading * _cfg.roll_speed(n) * _cfg.speed_scale(elapsed)
+	a.velocity = heading * _cfg.roll_speed(n) * _cfg.speed_scale(elapsed) + travel_config.drift()
 	a.angular_velocity = _cfg.roll_spin(n)
 	a.rotation = randf() * TAU
 	add_child(a)
@@ -339,34 +350,47 @@ func _destroy_asteroid(a: Asteroid) -> void:
 	a.queue_free()
 
 
-## Os canhoes do asteroide caem inteiros (o triangulo todo, que volta a se
-## fundir ao encaixar na nave). O resto se parte em pedacos de
-## piece_min..piece_max celulas conectadas, no mesmo lugar em que estavam;
-## ore_loss dessas celulas some (vira poeira).
+## O asteroide se parte em roll_piece_count() pedacos conectados (poucos nos
+## pequenos, mais nos grandes), no mesmo lugar em que estavam. Os canhoes sao
+## celulas como as outras: vao no pedaco em que cairem, entao um triangulo
+## pode cair inteiro, dividido entre pedacos ou sem algumas celulas (quando
+## encaixados, os que ainda formarem triangulo voltam a se fundir).
 func _break_into_ore(a: Asteroid) -> void:
-	var dropped := {}
-	for g in a.groups:
-		if randf() >= enemy_config.drop_chance:
-			continue
-		var weapons := {}
-		for h in g.cells:
+	var kept := _lose_cells(a)
+	var weapons := {}
+	for h in kept:
+		if a.cells[h] == Weapons.COMMON:
 			weapons[h] = Weapons.COMMON
-			dropped[h] = true
-		_launch_ore(a, g.cells, weapons)
-		fx.burst(a.group_global(g), Weapons.color(g.type), 12, 120.0)
-	var keys := a.cells.keys().filter(func(h): return not dropped.has(h))
-	keys.shuffle()
-	# Arredondamento sorteado: em media perde exatamente ore_loss.
-	var exact := keys.size() * (1.0 - _cfg.ore_loss)
-	var count := int(exact) + (1 if randf() < exact - int(exact) else 0)
-	for i in range(count, keys.size()):
-		fx.burst(a.cell_global(keys[i]), a.base_color.darkened(0.2), 6, 90.0)
-	var kept := keys.slice(0, count)
-	for group in _split_into_pieces(kept):
-		_launch_ore(a, group)
+	for piece in _split_into_pieces(kept, _cfg.roll_piece_count(a.size)):
+		_launch_ore(a, piece, weapons)
 	for h in kept:
 		fx.burst(a.cell_global(h), a.base_color.lightened(0.2), 2, 70.0)
 	_trim_ores()
+
+
+## ore_loss das celulas vira poeira (arredondamento sorteado: em media perde
+## exatamente ore_loss). So somem celulas cuja perda nao parte o que sobra:
+## quem decide em quantos pedacos o asteroide se divide e roll_piece_count().
+## Retorna as celulas que ficam.
+func _lose_cells(a: Asteroid) -> Array:
+	var keys := a.cells.keys()
+	keys.shuffle()
+	var exact := keys.size() * _cfg.ore_loss
+	var to_lose := int(exact) + (1 if randf() < exact - int(exact) else 0)
+	var left := {}
+	for h in keys:
+		left[h] = true
+	var parts := Hex.components(keys).size()
+	for h in keys:
+		if to_lose <= 0:
+			break
+		left.erase(h)
+		if left.is_empty() or Hex.components(left.keys()).size() > parts:
+			left[h] = true
+			continue
+		to_lose -= 1
+		fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 6, 90.0)
+	return left.keys()
 
 
 ## Pedaco de minerio com celulas do asteroide, afastando-se do centro dele.
@@ -382,64 +406,59 @@ func _launch_ore(a: Asteroid, keys: Array, weapons: Dictionary = {}) -> void:
 	_add_ore(ore)
 
 
-## Divide celulas em grupos conectados de piece_min..piece_max celulas.
-## Comeca e cresce pelas celulas com menos vizinhos livres (as que ficariam
-## isoladas) e, no fim, cola as sobras de 1 celula num pedaco vizinho.
-func _split_into_pieces(keys: Array) -> Array:
-	var left := {}
-	for h in keys:
-		left[h] = true
-	var piece_of := {}
+## Divide as celulas em ~`count` pedacos conectados de tamanhos parecidos
+## (cada parte desconectada recebe sua parcela, no minimo 1).
+func _split_into_pieces(keys: Array, count: int) -> Array:
 	var pieces := []
-	while not left.is_empty():
-		var start := _most_isolated(left.keys(), left)
-		left.erase(start)
-		var piece: Array[Vector2i] = [start]
-		var target := randi_range(_cfg.piece_min, maxi(_cfg.piece_min, _cfg.piece_max))
-		while piece.size() < target:
-			var options: Array[Vector2i] = []
+	for part in Hex.components(keys):
+		var k := clampi(roundi(float(count) * part.size() / keys.size()), 1, part.size())
+		pieces.append_array(_grow_pieces(part, k))
+	return pieces
+
+
+## Sementes espalhadas (cada uma o mais longe possivel das anteriores) crescem
+## juntas, uma celula por vez em rodizio, ate cobrir a parte toda.
+func _grow_pieces(part: Array, count: int) -> Array:
+	if count <= 1:
+		return [part]
+	var inside := {}
+	for h in part:
+		inside[h] = true
+	var seeds: Array[Vector2i] = [part.pick_random()]
+	while seeds.size() < count:
+		var best: Vector2i = part[0]
+		var best_dist := -1.0
+		for h in part:
+			var dist := INF
+			for s in seeds:
+				dist = minf(dist, Hex.distance(h, s))
+			dist += randf() * 0.5  # desempate aleatorio
+			if dist > best_dist:
+				best_dist = dist
+				best = h
+		seeds.append(best)
+	var taken := {}
+	var pieces := []
+	for s in seeds:
+		taken[s] = true
+		pieces.append([s])
+	var growing := true
+	while growing and taken.size() < part.size():
+		growing = false
+		for piece in pieces:
+			var options := []
 			for h in piece:
 				for d in Hex.DIRS:
-					if left.has(h + d) and not options.has(h + d):
-						options.append(h + d)
+					var n: Vector2i = h + d
+					if inside.has(n) and not taken.has(n):
+						options.append(n)
 			if options.is_empty():
-				break
-			var pick := _most_isolated(options, left)
-			left.erase(pick)
+				continue
+			var pick: Vector2i = options.pick_random()
+			taken[pick] = true
 			piece.append(pick)
-		for h in piece:
-			piece_of[h] = pieces.size()
-		pieces.append(piece)
-
-	# Sobras de 1 celula entram num pedaco vizinho (ele pode passar de piece_max).
-	for i in pieces.size():
-		if pieces[i].size() != 1:
-			continue
-		var h: Vector2i = pieces[i][0]
-		for d in Hex.DIRS:
-			var j: int = piece_of.get(h + d, -1)
-			if j != -1 and j != i and not pieces[j].is_empty():
-				pieces[j].append(h)
-				piece_of[h] = j
-				pieces[i] = []
-				break
-	return pieces.filter(func(piece): return not piece.is_empty())
-
-
-## A celula com menos vizinhos ainda livres (desempate aleatorio).
-func _most_isolated(candidates: Array, left: Dictionary) -> Vector2i:
-	var best: Vector2i = candidates[0]
-	var best_rank := INF
-	for h in candidates:
-		var free := 0
-		for d in Hex.DIRS:
-			if left.has(h + d):
-				free += 1
-		var rank := free + randf() * 0.5
-		if rank < best_rank:
-			best_rank = rank
-			best = h
-	return best
+			growing = true
+	return pieces
 
 
 func _add_ore(ore: Ore) -> void:
@@ -586,6 +605,33 @@ func _on_ore_attached(ore: Ore, placement: Dictionary) -> void:
 		if g.type != Weapons.COMMON:
 			hud.popup("+%s" % Weapons.NAMES[g.type], Weapons.color(g.type), _to_screen(at + Vector2(0, -20)), 16)
 	_remove_ore(ore)
+
+
+## Minerio atingido por tiro inimigo: as celulas atingidas somem; se o pedaco
+## ficar partido, cada parte vira um pedaco separado.
+func _chip_ore(ore: Ore, hit: Array) -> void:
+	for h in hit:
+		if ore.cells.has(h):
+			var color := Ore.COLOR if ore.cells[h] == Weapons.NONE else Weapons.color(ore.cells[h])
+			fx.burst(ore.cell_global(h), color, 6, 110.0)
+			ore.cells.erase(h)
+	if ore.cells.is_empty():
+		_remove_ore(ore)
+		return
+	var parts := Hex.components(ore.cells.keys())
+	parts.sort_custom(func(a, b): return a.size() > b.size())
+	for i in range(1, parts.size()):
+		var weapons := {}
+		for h in parts[i]:
+			weapons[h] = ore.cells[h]
+		var piece := Ore.new()
+		piece.setup_from(ore, parts[i], weapons)
+		for h in parts[i]:
+			ore.cells.erase(h)
+		piece.velocity = ore.velocity + Vector2.from_angle(randf() * TAU) * 20.0
+		piece.angular_velocity = ore.angular_velocity + randf_range(-0.5, 0.5)
+		_add_ore(piece)
+	ore.recenter()
 
 
 func _remove_ore(ore: Ore) -> void:

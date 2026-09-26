@@ -27,6 +27,7 @@ var _music: AudioStreamPlayer
 
 
 func _ready() -> void:
+	Display.setup(get_tree())
 	InputActions.ensure_defaults()
 	
 	_music = AudioStreamPlayer.new()
@@ -61,6 +62,8 @@ func _process(delta: float) -> void:
 	_starfield.cam_pos += Vector2(22.0, 6.0) * delta
 	_starfield.queue_redraw()
 	_showcase.rotation += 0.12 * delta
+	# A area visivel pode mudar (tela cheia, F11, proporcao do monitor).
+	_half_view = get_viewport_rect().size / CAMERA_ZOOM * 0.5
 	# Os objetos do fundo atravessam a tela e reaparecem do outro lado.
 	var bounds := _half_view + Vector2.ONE * 60.0
 	for d in _drifters:

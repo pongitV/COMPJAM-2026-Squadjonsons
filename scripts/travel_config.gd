@@ -42,6 +42,16 @@ extends Resource
 ## Opacidade dos riscos (0 = desliga).
 @export_range(0.0, 1.0, 0.01) var streak_alpha := 0.16
 
+@export_group("Fluxo")
+## Arrasto lento dos asteroides no sentido contrario ao avanco: somado a
+## velocidade de cada um que nasce, faz eles "passarem" pela nave.
+@export_range(0.0, 500.0, 1.0, "suffix:px/s") var asteroid_drift := 45.0
+## Chance de um asteroide nascer a frente (no sentido do avanco); o resto
+## nasce em qualquer ponto em volta da tela.
+@export_range(0.0, 1.0, 0.05) var spawn_ahead_chance := 0.7
+## Abertura do arco "a frente" onde eles nascem (centrado no avanco).
+@export_range(0.0, 360.0, 1.0, "radians_as_degrees") var spawn_ahead_arc := 2.1
+
 @export_group("Chegada")
 ## Tempo ate a bandeira de chegada (a barra no rodape enche nesse tempo).
 @export_range(10.0, 3600.0, 5.0, "suffix:s") var race_duration := 300.0
@@ -55,3 +65,15 @@ func speed_at(elapsed: float) -> float:
 ## Direcao do avanco da nave (o fundo anda no sentido oposto).
 func direction() -> Vector2:
 	return Vector2.from_angle(travel_angle)
+
+
+## Velocidade de arrasto somada aos asteroides.
+func drift() -> Vector2:
+	return -direction() * asteroid_drift
+
+
+## Angulo (a partir do centro da tela) onde um asteroide nasce.
+func roll_spawn_angle() -> float:
+	if randf() < spawn_ahead_chance:
+		return travel_angle + randf_range(-0.5, 0.5) * spawn_ahead_arc
+	return randf() * TAU
