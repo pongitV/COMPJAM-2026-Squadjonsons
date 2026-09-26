@@ -223,6 +223,8 @@ static func bounce_apart(a: HexBody, b: HexBody, mass_a: float, mass_b: float, b
 	var m_big := mass_a if swap else mass_b
 	var inv_small := 1.0 / m_small
 	var inv_big := 1.0 / m_big
+	if inv_small + inv_big <= 0.0:
+		return true  # dois corpos imoveis: nenhum se mexe
 	var inv_i_small := inv_small * small.cells.size() / small.inertia()
 	var inv_i_big := inv_big * big.cells.size() / big.inertia()
 	var r_small := contact - small.global_position

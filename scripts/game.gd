@@ -1,5 +1,8 @@
 extends Node2D
 ## Controlador principal: spawn, colisoes, camera e HUD.
+## Os asteroides comuns nascem sem canhoes; os inimigos (asteroides armados)
+## seguem o cronograma de ondas do EnemyConfig. Na bandeira de chegada os dois
+## param e entra o chefe (Boss); destruir o nucleo dele vence o jogo.
 ## A camera fica parada; so o fundo rola (TravelConfig), dando a impressao de
 ## que a nave avanca. A nave se move livre, mas presa na area visivel.
 
@@ -15,6 +18,13 @@ const ART_ZOOM := 1.2
 @export var travel_config: TravelConfig = preload("res://config/travel.tres")
 ## Asteroides armados: canhoes, forca dos tiros e drop.
 @export var enemy_config: EnemyConfig = preload("res://config/enemies.tres")
+## Comeca a partida com o tutorial (ENTER pula).
+@export var tutorial_enabled := true
+
+## Asteroide destruido pelos canhoes (antes de virar minerio).
+signal asteroid_destroyed(a: Asteroid)
+## Pedaco encaixado na nave ({celula: canhao}).
+signal piece_attached(placement: Dictionary)
 
 var player: Player
 var bullets: Bullets
@@ -34,6 +44,7 @@ var starfield: Starfield
 var speed_fx: SpeedFx
 var hud: Hud
 var pause_menu: PauseMenu
+var tutorial: Tutorial
 var asteroids: Array[Asteroid] = []
 var ores: Array[Ore] = []
 
@@ -46,6 +57,14 @@ var destroyed := 0
 var max_cells := 1
 var best_score := 0
 var _spawn_timer := 0.0
+## Segundos ate o proximo inimigo (EnemyConfig.interval).
+var _enemy_timer := 0.0
+## O chefe, depois que ele aparece (null antes e depois de derrotado).
+var boss: Boss
+var boss_started := false
+var _boss_phase := -1
+## Chefe derrotado: fim de jogo com vitoria.
+var won := false
 var _shake := 0.0
 ## Atalho para asteroid_config.
 var _cfg: AsteroidConfig
@@ -59,6 +78,7 @@ func _ready() -> void:
 	Weapons.config = cannon_config
 	Ore.drift = travel_config.ore_drift_velocity()
 	_spawn_timer = _cfg.first_spawn_delay
+	_enemy_timer = enemy_config.first_enemy_delay
 	# As artes aparecem bem menores que o original e giram: mipmaps evitam serrilhado.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	InputActions.ensure_defaults()
@@ -159,6 +179,10 @@ func _ready() -> void:
 	add_child(pause_menu)
 	_update_hud()
 
+	if tutorial_enabled:
+		tutorial = Tutorial.new(self)
+		add_child(tutorial)
+
 
 func _on_laser_started() -> void:
 	if not laser_sfx.playing:
@@ -172,7 +196,9 @@ func _on_laser_stopped() -> void:
 func _physics_process(delta: float) -> void:
 	var visible_asteroids := _asteroids_on_screen()
 	if not game_over:
-		elapsed += delta
+		# O relogio da corrida (dificuldade, chegada) so anda depois do tutorial.
+		if not tutorial_running():
+			elapsed += delta
 		player.aim = get_global_mouse_position()
 		player.step(delta)
 		_keep_player_on_screen()
@@ -214,6 +240,8 @@ func _physics_process(delta: float) -> void:
 	fx.step(delta)
 
 	_spawn_asteroids(delta)
+	_spawn_enemies(delta)
+	_update_boss()
 	_despawn_far_objects()
 	_update_camera(delta)
 	_update_hud()
@@ -232,12 +260,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _restart() -> void:
 	get_tree().paused = false
+	Engine.time_scale = 1.0
 	get_tree().reload_current_scene()
 
 
 func _go_to_menu() -> void:
 	get_tree().paused = false
+	Engine.time_scale = 1.0
 	get_tree().change_scene_to_file(MainMenu.SCENE)
+
+
+func tutorial_running() -> bool:
+	return tutorial != null and tutorial.running
 
 
 # --- Canhoes ----------------------------------------------------------------
@@ -257,13 +291,9 @@ func _fire_shot(shot: Dictionary) -> void:
 			bullets.spawn(origin, dir * cfg.common_speed + player.velocity,
 				cfg.projectile_life(Weapons.COMMON), cfg.damage(Weapons.COMMON), color)
 		Weapons.SHOTGUN:
-			var pellets := cfg.shotgun_pellets
-			for i in pellets:
-				# Espalhados de -spread/2 a +spread/2 (um so vai reto).
-				var t := float(i) / (pellets - 1) - 0.5 if pellets > 1 else 0.0
-				var pellet_dir := dir.rotated(t * cfg.shotgun_spread + randf_range(-0.05, 0.05))
-				var speed := cfg.shotgun_speed * randf_range(0.9, 1.1)
-				bullets.spawn(origin, pellet_dir * speed + player.velocity,
+			# Um tiro no centro e os outros abrindo em leque para os lados.
+			for pellet_dir in cfg.shotgun_dirs(dir):
+				bullets.spawn(origin, pellet_dir * cfg.shotgun_speed + player.velocity,
 					cfg.projectile_life(Weapons.SHOTGUN), cfg.damage(Weapons.SHOTGUN), color)
 		Weapons.LASER:
 			lasers.start(shot.key)
@@ -287,14 +317,20 @@ func _enemy_fire(delta: float, visible_asteroids: Array[Asteroid]) -> void:
 		if a.groups.is_empty():
 			continue
 		a.aim_at = player.global_position
+		# O chefe atira de onde estiver (esta sempre na tela).
+		var is_boss := a is Boss
 		for g in a.groups:
 			var left: float = a.cooldowns.get(g.key, enemy_config.first_shot_delay) - delta
-			var reach := enemy_config.range_of(g.type) + player.bound_radius
+			var reach := INF if is_boss else enemy_config.range_of(g.type) + player.bound_radius
 			if left > 0.0 or a.muzzle(g).distance_to(player.global_position) > reach:
 				a.cooldowns[g.key] = maxf(left, 0.0)
 				continue
-			a.cooldowns[g.key] = enemy_config.cooldown(g.type, progress)
-			enemy_shots.fire(a, g, player, progress)
+			if is_boss and g.type == Weapons.LASER:
+				a.cooldowns[g.key] = enemy_config.boss_laser_cooldown
+			else:
+				a.cooldowns[g.key] = enemy_config.cooldown(g.type, progress) \
+					* (enemy_config.boss_cooldown_mult if is_boss else 1.0)
+			enemy_shots.fire(a, g, player, progress, a.harmless)
 			if g.type == Weapons.COMMON or g.type == Weapons.SHOTGUN:
 				cannon_sfx.play()
 
@@ -302,7 +338,7 @@ func _enemy_fire(delta: float, visible_asteroids: Array[Asteroid]) -> void:
 # --- Asteroides -------------------------------------------------------------
 
 func _spawn_asteroids(delta: float) -> void:
-	if game_over:
+	if game_over or tutorial_running() or boss_started:
 		return
 	_spawn_timer -= delta
 	if _spawn_timer > 0.0 or asteroids.size() >= _cfg.max_asteroids:
@@ -317,8 +353,13 @@ func _spawn_asteroids(delta: float) -> void:
 		cannon_cells += g.cells.size()
 	var n := _cfg.roll_size(elapsed, cannon_cells)
 	var a := Asteroid.new()
-	a.setup(n, _cfg.hp_scale(elapsed), enemy_config.roll_armament(n, _progress()))
+	a.setup(n, _cfg.hp_scale(elapsed))
+	_launch_from_edge(a)
 
+
+## Poe um asteroide (ou inimigo) novo fora da tela e o manda na direcao da nave.
+func _launch_from_edge(a: Asteroid) -> void:
+	var n := a.cells.size()
 	# Em volta da tela (a camera e fixa; a nave pode estar perto da borda), de
 	# preferencia a frente, no sentido do avanco.
 	var dist := _view_radius() + a.bound_radius + _cfg.spawn_margin
@@ -332,6 +373,136 @@ func _spawn_asteroids(delta: float) -> void:
 	a.rotation = randf() * TAU
 	add_child(a)
 	asteroids.append(a)
+
+
+## Inimigos: um a cada EnemyConfig.interval (conforme o minuto da corrida),
+## respeitando o maximo de inimigos vivos daquele minuto. Os canhoes saem de
+## EnemyConfig.roll_wave_armament.
+func _spawn_enemies(delta: float) -> void:
+	if game_over or tutorial_running() or boss_started:
+		return
+	_enemy_timer -= delta
+	if _enemy_timer > 0.0:
+		return
+	if _enemy_count() >= enemy_config.max_alive(elapsed):
+		# No limite: tenta de novo daqui a pouco (quando algum morrer).
+		_enemy_timer = 1.0
+		return
+	_enemy_timer = enemy_config.interval(elapsed)
+	var armament := enemy_config.roll_wave_armament(elapsed)
+	var a := Asteroid.new()
+	a.setup(enemy_config.enemy_size(armament), _cfg.hp_scale(elapsed), armament)
+	_launch_from_edge(a)
+
+
+## Inimigos vivos (asteroides com canhao; o chefe e os do tutorial nao contam).
+func _enemy_count() -> int:
+	var n := 0
+	for a in asteroids:
+		if not a.groups.is_empty() and not a.harmless and not a is Boss:
+			n += 1
+	return n
+
+
+# --- Chefe ------------------------------------------------------------------
+
+## Na bandeira de chegada o chefe entra pela direita (o spawn ja parou).
+func _update_boss() -> void:
+	if not boss_started:
+		if not game_over and not tutorial_running() and elapsed >= travel_config.race_duration:
+			_start_boss()
+		return
+	if boss == null or not is_instance_valid(boss):
+		return
+	boss.set_stop_x(_boss_stop_x())
+	_set_boss_patrol()
+	boss.holding = enemy_shots.boss_laser_active(boss)
+	for b in boss.broken:
+		fx.burst(b[0], Weapons.color(Weapons.COMMON) if b[1] else Color.WHITE, 14 if b[1] else 6, 160.0)
+	boss.broken.clear()
+	# Partes que se soltaram do chefe viram pedacos flutuantes (como os da nave).
+	for piece: Dictionary in boss.detached:
+		var ore := Ore.new()
+		ore.setup_from(boss, piece.keys(), piece)
+		var outward := (ore.global_position - boss.global_position).normalized()
+		ore.velocity = boss.velocity + outward * randf_range(40.0, 80.0)
+		ore.angular_velocity = randf_range(-1.0, 1.0)
+		_add_ore(ore)
+	if not boss.detached.is_empty():
+		_trim_ores()
+	boss.detached.clear()
+	# Tiros no escudo: so faisca cinza.
+	for p in boss.pings:
+		if randf() < 0.3:
+			fx.burst(p, Color(0.75, 0.8, 0.9), 2, 90.0)
+	boss.pings.clear()
+	var phase := boss.phase()
+	if phase != _boss_phase:
+		if _boss_phase != -1:
+			var msg: String = ["", "ESCUDO DO LASER CAIU!", "NÚCLEO EXPOSTO!"][phase]
+			hud.popup(msg, UIStyle.GOLD, get_viewport_rect().size * Vector2(0.5, 0.3), 26)
+			_shake = maxf(_shake, 12.0)
+		_boss_phase = phase
+	hud.set_boss_status(Boss.NAME, boss.health_ratio())
+
+
+func _start_boss() -> void:
+	boss_started = true
+	boss = Boss.new()
+	boss.setup_boss(enemy_config)
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	var center := camera.global_position
+	# Centralizado na altura da tela: o laser corta a tela no meio.
+	boss.position = Vector2(center.x + half.x + boss.extent_x + 30.0, center.y)
+	boss.set_stop_x(_boss_stop_x())
+	_set_boss_patrol()
+	boss.z_index = 1
+	add_child(boss)
+	asteroids.append(boss)
+	hud.show_boss_bar()
+	hud.popup(Boss.NAME + "!", UIStyle.RED, get_viewport_rect().size * Vector2(0.5, 0.35), 34)
+	_shake = maxf(_shake, 10.0)
+
+
+## Onde o chefe fica: inteiro na tela, perto da borda direita.
+func _boss_stop_x() -> float:
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	return camera.global_position.x + half.x - boss.extent_x - enemy_config.boss_edge_margin
+
+
+## Faixa em que o chefe sobe e desce: centrada na tela, sem sair dela.
+func _set_boss_patrol() -> void:
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	var room := maxf(half.y - boss.extent_y - Hex.SIZE, 0.0)
+	boss.set_patrol(camera.global_position.y, room * enemy_config.boss_patrol_range)
+
+
+## Nucleo do chefe destruido: explosao grande e a tela de vitoria.
+func _on_boss_defeated(b: Boss) -> void:
+	won = true
+	game_over = true
+	boss = null
+	pause_menu.enabled = false
+	tractor.drop_all()
+	enemy_shots.clear()
+	score += enemy_config.boss_score
+	destroyed += 1
+	for h in b.cells:
+		fx.burst(b.cell_global(h), Weapons.color(Weapons.COMMON) if b.cells[h] != Weapons.NONE else b.base_color, 8, 220.0)
+	fx.burst(b.cell_global(Boss.CORE), Player.CORE_COLOR, 80, 320.0)
+	fx.ring(b.cell_global(Boss.CORE), 260.0, UIStyle.GOLD)
+	_shake = 30.0
+	hud.hide_boss_bar()
+	b.queue_free()
+	var new_record := score > best_score
+	if new_record:
+		best_score = score
+		SaveData.save_best_score(best_score)
+	hud.show_victory({
+		"score": score, "best": best_score, "new_record": new_record,
+		"time": elapsed, "duration": travel_config.race_duration, "max_cells": max_cells,
+		"collected": collected, "destroyed": destroyed,
+	})
 
 
 ## Batidas entre asteroides (cada par uma vez por frame).
@@ -350,7 +521,7 @@ func _collide_ores() -> void:
 			continue
 		var ore_mass := ore.cells.size() * _cfg.ore_cell_mass
 		for a in asteroids:
-			HexBody.bounce_apart(ore, a, ore_mass, a.cells.size(), _cfg.ore_bounce, _cfg.spin_limit)
+			HexBody.bounce_apart(ore, a, ore_mass, a.mass(), _cfg.ore_bounce, _cfg.spin_limit)
 		if player.alive:
 			HexBody.bounce_apart(ore, player, ore_mass, player.cells.size(), _cfg.ore_bounce, _cfg.spin_limit)
 
@@ -359,10 +530,19 @@ func _collide_ores() -> void:
 func _destroy_asteroid(a: Asteroid) -> void:
 	asteroids.erase(a)
 	asteroid_destroy_sfx.play()
+	if a is Boss:
+		# So e vitoria se a nave ainda estiver inteira (nucleo vivo).
+		if game_over:
+			boss = null
+			a.queue_free()
+		else:
+			_on_boss_defeated(a)
+		return
 	if not game_over:
 		# A pontuacao conta por tras (game over e recorde), sem aparecer no HUD.
 		score += _cfg.score_for(a.max_hp)
 		destroyed += 1
+	asteroid_destroyed.emit(a)
 	_break_into_ore(a)
 	a.queue_free()
 
@@ -373,6 +553,9 @@ func _destroy_asteroid(a: Asteroid) -> void:
 ## pode cair inteiro, dividido entre pedacos ou sem algumas celulas (quando
 ## encaixados, os que ainda formarem triangulo voltam a se fundir).
 func _break_into_ore(a: Asteroid) -> void:
+	if not a.drop_pieces.is_empty():
+		_drop_fixed_pieces(a)
+		return
 	var kept := _lose_cells(a)
 	var weapons := {}
 	for h in kept:
@@ -383,6 +566,45 @@ func _break_into_ore(a: Asteroid) -> void:
 	for h in kept:
 		fx.burst(a.cell_global(h), a.base_color.lightened(0.2), 2, 70.0)
 	_trim_ores()
+
+
+## Asteroide com pedacos fixos (tutorial): cada pedaco cai inteiro, com os
+## canhoes que tiver; o que nao estiver em nenhum pedaco vira poeira.
+func _drop_fixed_pieces(a: Asteroid) -> void:
+	var used := {}
+	for piece: Array in a.drop_pieces:
+		var weapons := {}
+		for h in piece:
+			used[h] = true
+			if a.cells.get(h, Weapons.NONE) == Weapons.COMMON:
+				weapons[h] = Weapons.COMMON
+				fx.burst(a.cell_global(h), Weapons.color(Weapons.COMMON), 10, 110.0)
+		_launch_ore(a, piece, weapons)
+	for h in a.cells:
+		if not used.has(h):
+			fx.burst(a.cell_global(h), a.base_color.darkened(0.2), 8, 100.0)
+
+
+## Asteroide que so o tutorial cria (inofensivo, formato fixo, ver
+## Asteroid.setup_shape): nasce fora da borda da frente (direita) e cruza a
+## tela no sentido contrario, passando ao lado da nave (`side` = 1 de um lado,
+## -1 do outro) com `gap` px de folga.
+func spawn_scripted_asteroid(shape: Dictionary, pieces: Array, side: float, gap: float, speed: float) -> Asteroid:
+	var a := Asteroid.new()
+	a.setup_shape(shape)
+	a.drop_pieces = pieces
+	a.harmless = true
+	var forward := travel_config.direction()
+	var half := get_viewport_rect().size / camera.zoom * 0.5
+	var ahead := absf(forward.x) * half.x + absf(forward.y) * half.y
+	a.position = camera.global_position + forward * (ahead + a.bound_radius + 20.0) \
+		+ forward.orthogonal() * (player.global_position - camera.global_position).dot(forward.orthogonal()) \
+		+ forward.orthogonal() * side * (player.bound_radius + a.bound_radius + gap)
+	a.velocity = -forward * speed
+	a.angular_velocity = randf_range(-0.15, 0.15)
+	add_child(a)
+	asteroids.append(a)
+	return a
 
 
 ## ore_loss das celulas vira poeira (arredondamento sorteado: em media perde
@@ -493,35 +715,62 @@ func _trim_ores() -> void:
 		_remove_ore(plain[0] if not plain.is_empty() else loose[0])
 
 
-## Asteroide que encosta na nave: quica (a nave nao e empurrada) e, fora do
-## intervalo contact_cooldown, destroi as celulas da nave que tocou, tomando
-## contact_damage de dano por celula destruida. O asteroide nao perde celulas.
-## Partes da nave que se soltarem do nucleo viram pedacos soltos.
+## Batida celula a celula: o asteroide entra na nave destruindo as celulas
+## que toca ate gastar a penetracao do tamanho dele (Asteroid.impact_budget) e
+## entao recua. Ele nao perde celulas: toma contact_damage de dano por celula
+## da nave destruida (o chefe nao toma). Partes da nave que se soltarem do
+## nucleo viram pedacos soltos.
 func _check_player_collisions() -> void:
 	var hits := PackedVector2Array()
 	var core_hit := false
 	for a: Asteroid in asteroids:
 		var reach := a.bound_radius + player.bound_radius
 		if a.global_position.distance_squared_to(player.global_position) > reach * reach:
+			a.recharge_impact()
 			continue
-		# Celulas da nave tocadas (antes do quique, que separa os dois).
-		var touched := {}
+		# Pares [celula do asteroide, celula da nave] encostados, ponto de
+		# contato, normal (da nave para o asteroide) e sobreposicao.
+		var touching := []
+		var contact := Vector2.ZERO
+		var normal := Vector2.ZERO
+		var depth := 0.0
 		for h in a.cells:
-			var target := player.find_cell_near(a.cell_global(h), HexBody.CONTACT_DIST)
-			if target != HexBody.NO_CELL:
-				touched[target] = true
-		if touched.is_empty():
+			var p := a.cell_global(h)
+			var target := player.find_cell_near(p, HexBody.CONTACT_DIST)
+			if target == HexBody.NO_CELL:
+				continue
+			var q := player.cell_global(target)
+			touching.append([h, target])
+			contact += (p + q) * 0.5
+			normal += p - q
+			depth = maxf(depth, HexBody.CONTACT_DIST - p.distance_to(q))
+		if touching.is_empty():
 			continue
-		HexBody.bounce_apart(a, player, a.cells.size(), INF, _cfg.contact_bounce, _cfg.spin_limit)
-		if a.contact_cooldown > 0.0:
-			continue
-		a.contact_cooldown = _cfg.contact_cooldown
-		for target: Vector2i in touched:
+		contact /= touching.size()
+		normal = normal.normalized()
+		if normal == Vector2.ZERO:
+			normal = (a.global_position - player.global_position).normalized()
+
+		# Entra destruindo enquanto tiver penetracao.
+		for pair in touching:
+			if a.impact_budget <= 0:
+				break
+			var target: Vector2i = pair[1]
+			if not player.cells.has(target):
+				continue
 			hits.append(player.cell_global(target))
-			a.apply_damage(_cfg.contact_damage)
+			a.impact_budget -= 1
+			if not a is Boss:
+				a.apply_damage(_cfg.contact_damage)
 			if player.destroy_cell(target):
 				core_hit = true
 				break
+		if core_hit:
+			break
+		# Sem penetracao: bate e recua.
+		if a.impact_budget <= 0:
+			a.bounce_off(player, normal, contact, depth)
+			_shake = maxf(_shake, minf(2.0 + a.cells.size() * 0.3, 10.0))
 		if core_hit:
 			break
 	_after_player_damage(hits, core_hit)
@@ -601,6 +850,7 @@ func _on_ore_attached(ore: Ore, placement: Dictionary) -> void:
 		var w: int = placement[slot]
 		fx.burst(at, Ore.COLOR if w == Weapons.NONE else Weapons.color(w), 6, 80.0)
 	hud.popup("+%d" % placement.size(), UIStyle.GREEN, _to_screen(center / placement.size()), 14)
+	piece_attached.emit(placement)
 	# Canhoes que surgiram com o encaixe (inclusive triangulos que se fundiram).
 	for g in player.groups:
 		if before.has(g.key):
@@ -649,6 +899,8 @@ func _remove_ore(ore: Ore) -> void:
 func _despawn_far_objects() -> void:
 	var limit := _view_radius() * _cfg.despawn_factor
 	for a in asteroids.duplicate():
+		if a is Boss:
+			continue
 		if a.global_position.distance_to(camera.global_position) > limit + a.bound_radius:
 			asteroids.erase(a)
 			a.queue_free()
@@ -716,11 +968,15 @@ func _to_screen(world_pos: Vector2) -> Vector2:
 
 func _update_hud() -> void:
 	hud.set_countdown(elapsed, travel_config.race_duration)
-	hud.cells_tab.set_value(player.cells.size())
+	hud.cells_card.set_value(player.cells.size())
 
 
 func _on_core_destroyed() -> void:
+	if won:
+		return
 	game_over = true
+	if tutorial != null:
+		tutorial.finish(false)
 	pause_menu.enabled = false
 	tractor.drop_all()
 	tractor.queue_redraw()

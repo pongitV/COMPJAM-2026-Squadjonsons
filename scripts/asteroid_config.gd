@@ -83,15 +83,21 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var bounce := 0.6
 
 @export_group("Batida na nave")
-## Ao bater na nave o asteroide quica (a nave nao e empurrada) e destroi as
-## celulas dela que tocou, sem perder celulas. Dano que o asteroide toma por
-## celula da nave que destroi.
+## Quantas celulas da nave o asteroide destroi numa batida antes de voltar:
+## celulas * penetration_per_cell (no minimo penetration_min). Asteroides
+## maiores entram mais fundo. O asteroide nao perde celulas na batida.
+@export_range(0.0, 2.0, 0.01) var penetration_per_cell := 0.25
+@export_range(0, 20, 1) var penetration_min := 1
+## Dano que o asteroide toma por celula da nave que destroi.
 @export_range(0.0, 50.0, 0.5) var contact_damage := 2.0
-## Segundos ate o mesmo asteroide poder destruir celulas da nave de novo
-## (evita que ele "fure" a nave enquanto ainda esta encostado).
-@export_range(0.0, 5.0, 0.05, "suffix:s") var contact_cooldown := 0.5
-## Elasticidade do quique na nave (0 = para, 1 = quique perfeito).
-@export_range(0.0, 1.0, 0.05) var contact_bounce := 0.5
+## Elasticidade da batida com a nave (0 = para, 1 = quique perfeito).
+@export_range(0.0, 1.0, 0.05) var ship_bounce := 0.3
+## Velocidade minima de recuo de um asteroide de 1 celula; divide pela raiz
+## do tamanho (asteroides grandes recuam menos).
+@export_range(0.0, 500.0, 1.0, "suffix:px/s") var recoil_speed := 60.0
+## Massa de cada celula da nave em relacao a de uma celula de asteroide
+## (maior = a nave e menos empurrada nas batidas).
+@export_range(0.1, 10.0, 0.1) var ship_mass_per_cell := 1.0
 
 @export_group("Minerio")
 ## Fracao das celulas que se perde quando o asteroide vira minerio (canhoes
@@ -150,6 +156,11 @@ func max_size(elapsed: float, cannons: int) -> int:
 func roll_size(elapsed: float, cannons: int) -> int:
 	var top := max_size(elapsed, cannons)
 	return min_size + int(pow(randf(), size_bias) * (top - min_size + 1))
+
+
+## Celulas da nave que um asteroide deste tamanho destroi numa batida.
+func penetration_for(cells: int) -> int:
+	return maxi(penetration_min, roundi(cells * penetration_per_cell))
 
 
 ## `scale` = hp_scale() da hora em que o asteroide nasceu.

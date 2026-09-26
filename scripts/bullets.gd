@@ -38,7 +38,7 @@ func step(delta: float, asteroids: Array[Asteroid]) -> void:
 					continue
 				var reach := a.bound_radius + RADIUS
 				if p.distance_squared_to(a.global_position) < reach * reach and a.has_cell_near(p, HIT_DIST):
-					a.apply_damage(_damage[i])
+					a.damage_at(p, _damage[i])
 					dead = true
 					break
 		if dead:

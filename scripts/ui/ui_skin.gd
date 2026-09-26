@@ -19,17 +19,19 @@ const SLICE := {
 ## digitacao: pedir um slot que nao esta aqui falha em modo debug.
 const SLOTS := {
 	# Paineis (9-slice)
-	"card": "Moldura padrao dos cards do menu (usada se o card nao tiver a sua).",
+	"card": "Moldura padrao dos cards e abas (usada se o card nao tiver a sua).",
 	"card_record": "Card de recorde (menu principal).",
+	"card_cells": "Aba de hexagonos da nave (HUD, topo a esquerda).",
+	"card_countdown": "Aba do countdown ate a chegada (HUD, topo a direita).",
+	"card_race": "Moldura da linha de chegada no rodape.",
+	"card_boss": "Moldura da barra de vida do chefe (no alto da tela).",
 	"panel": "Moldura padrao dos paineis grandes (usada se o painel nao tiver a sua).",
 	"panel_pause": "Painel do menu de pausa.",
 	"panel_manual": "Painel do manual.",
-	# Abas da UI de jogo (9-slice; o padrao e a aba geometrica HexTabStyle)
-	"tab": "Moldura padrao das abas do HUD (usada se a aba nao tiver a sua).",
-	"tab_cells": "Aba de hexagonos da nave (topo, esquerda).",
-	"tab_countdown": "Aba do countdown ate a chegada (topo, direita).",
-	"tab_race": "Aba longa da linha de chegada no rodape.",
-	"panel_game_over": "Painel da tela de fim (game over).",
+	"panel_game_over": "Painel de game over.",
+	"panel_victory": "Painel de vitoria (chefe derrotado).",
+	"panel_tutorial": "Caixa de texto do tutorial.",
+	"panel_formations": "Janela das formacoes dos canhoes (tutorial).",
 	"key": "Chip de tecla do manual.",
 	"separator": "Linha separadora horizontal (so estica na largura).",
 	# Botoes (9-slice)
@@ -38,6 +40,8 @@ const SLOTS := {
 	"button_pressed": "Botao apertado / aba ativa (sem ele: hover ou normal).",
 	"button_focus": "Destaque de foco do teclado, desenhado por cima do botao (sem ele: button_hover).",
 	# Icones (encaixados no tamanho do placeholder)
+	"icon_cells": "Icone do card de hexagonos (HUD).",
+	"icon_countdown": "Icone do card de countdown (HUD).",
 	"icon_record": "Icone do card de recorde.",
 	"icon_pause": "Icone do titulo do menu de pausa.",
 	"icon_manual": "Icone do titulo do manual.",
@@ -51,6 +55,7 @@ const SLOTS := {
 	"backdrop_menu": "Fundo atras do manual no menu principal.",
 	"backdrop_pause": "Fundo atras do menu de pausa.",
 	"backdrop_game_over": "Fundo atras do painel de game over.",
+	"backdrop_victory": "Fundo atras do painel de vitoria.",
 }
 
 static var _cache := {}

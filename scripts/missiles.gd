@@ -48,7 +48,7 @@ func _explode(at: Vector2, asteroids: Array[Asteroid], fx: Fx) -> void:
 	var radius := Weapons.config.bomb_radius
 	for a in asteroids:
 		if a.hp > 0 and _in_blast(a, at, radius):
-			a.apply_damage(Weapons.config.damage(Weapons.BOMB))
+			a.damage_area(at, radius, Weapons.config.damage(Weapons.BOMB))
 	var color := Weapons.color(Weapons.BOMB)
 	fx.burst(at, color, 40, 320.0)
 	fx.burst(at, Color.WHITE, 12, 160.0)

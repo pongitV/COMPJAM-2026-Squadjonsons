@@ -13,8 +13,6 @@ const TEXT_DIM := Color(0.55, 0.72, 0.85)
 const PANEL_BG := Color(0.02, 0.05, 0.1, 0.8)
 ## Roxo da moldura de hexagonos original (paineis e botoes neutros).
 const PURPLE := Color(0.46, 0.3, 1.0)
-## Miolo das abas geometricas da UI de jogo (HexTabStyle).
-const TAB_FILL := Color(0.07, 0.05, 0.16, 0.92)
 
 ## Tipos de fonte aceitos por label().
 enum { BODY, CAPTION, DISPLAY }
@@ -40,8 +38,8 @@ const _ACCENTS := {
 static var _body_font: Font
 static var _display_font: Font
 static var _caption_font: Font
+static var _upper_font: Font
 static var _theme: Theme
-static var _hud_theme: Theme
 
 
 ## Texto corrido: regras, descricoes, teclas.
@@ -63,6 +61,23 @@ static func caption_font() -> Font:
 	if _caption_font == null:
 		_caption_font = _hexagon(0.4, 3, 500)
 	return _caption_font
+
+
+## Letras que precisam aparecer em maiusculo (a Hexagon desenha maiusculas
+## e minusculas iguais, com cara de minuscula): saem na Orbitron. Ex.: a
+## tecla R de girar a nave.
+static func upper_font() -> Font:
+	if _upper_font == null:
+		var f := FontVariation.new()
+		f.base_font = ORBITRON
+		var wght := TextServerManager.get_primary_interface().name_to_tag("wght")
+		f.variation_opentype = {wght: 700}
+		_upper_font = f
+	return _upper_font
+
+
+## Teclas mostradas sempre em maiusculo (na Orbitron, ver upper_font).
+const UPPERCASE_KEYS := ["R"]
 
 
 ## Texto sem acentos (a Hexagon nao tem letras acentuadas).
@@ -93,12 +108,6 @@ static func frame(slots: Variant, accent: Color = PURPLE, scale: float = HexFram
 	return UISkin.stylebox(slots, HexFrame.style(HexFrame.fill_for(accent), scale, pad))
 
 
-## Aba geometrica da UI de jogo (HexTabStyle): contorno na cor do conteudo.
-## Um sprite de slot proprio (UISkin) tem prioridade.
-static func tab(slots: Variant, accent: Color = PURPLE, point: float = 14.0) -> StyleBox:
-	return UISkin.stylebox(slots, HexTabStyle.make(TAB_FILL, accent, Color(accent, 0.3), point))
-
-
 static func label(text: String, size: int, color: Color = TEXT, kind: int = BODY) -> Label:
 	var l := Label.new()
 	l.text = plain(text)
@@ -122,7 +131,7 @@ static func key_chip(text: String) -> PanelContainer:
 		chip.add_child(ArrowGlyph.new(ARROWS[text]))
 	else:
 		var l := label(text, 12, TEXT)
-		l.add_theme_font_override("font", display_font())
+		l.add_theme_font_override("font", upper_font() if text in UPPERCASE_KEYS else display_font())
 		chip.add_child(l)
 	return chip
 
@@ -196,26 +205,6 @@ static func theme() -> Theme:
 		t.set_stylebox("separator", "HSeparator", line)
 		t.set_constant("separation", "HSeparator", int(separator.get_height()))
 	_theme = t
-	return t
-
-
-## Tema da UI de jogo (HUD e tela de fim): igual ao geral, mas com os botoes
-## no estilo geometrico (roxo parado, ciano com mouse/foco, dourado apertado).
-static func hud_theme() -> Theme:
-	if _hud_theme != null:
-		return _hud_theme
-	var t := theme().duplicate() as Theme
-	var normal := HexTabStyle.make(TAB_FILL, PURPLE, Color(PURPLE, 0.3), 12.0)
-	var hover := HexTabStyle.make(Color(0.05, 0.16, 0.24, 0.95), CYAN, Color(CYAN, 0.4), 12.0)
-	var pressed := HexTabStyle.make(Color(0.2, 0.15, 0.04, 0.95), GOLD, Color(GOLD, 0.4), 12.0)
-	t.set_stylebox("normal", "Button", UISkin.stylebox("button_normal", normal))
-	t.set_stylebox("hover", "Button", UISkin.stylebox(["button_hover", "button_normal"], hover))
-	var pressed_box := UISkin.stylebox(["button_pressed", "button_hover", "button_normal"], pressed)
-	t.set_stylebox("pressed", "Button", pressed_box)
-	t.set_stylebox("hover_pressed", "Button", pressed_box)
-	t.set_stylebox("focus", "Button", UISkin.stylebox(["button_focus", "button_hover"], hover))
-	t.set_stylebox("panel", "PanelContainer", tab("tab"))
-	_hud_theme = t
 	return t
 
 

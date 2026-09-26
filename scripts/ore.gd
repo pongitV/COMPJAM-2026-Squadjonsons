@@ -11,8 +11,8 @@ const COLOR := Color("#4df0b0")
 const LIFETIME := 25.0
 const CANNON_LIFETIME := 35.0
 
-## Velocidade para a qual os pedacos soltos tendem (o jogo aplica o arrasto
-## do TravelConfig): ficam para tras e saem da tela.
+## Deriva dos pedacos soltos (TravelConfig.ore_drift_velocity, posta pelo jogo):
+## a velocidade de cada um tende a ela, entao ficam para tras e saem da tela.
 static var drift := Vector2.ZERO
 
 ## Sendo arrastado pelo raio trator.
@@ -53,6 +53,7 @@ func step(delta: float) -> void:
 		visible = true
 		return
 	rotation += angular_velocity * delta
+	# O impulso inicial some aos poucos e sobra a deriva lenta para a esquerda.
 	velocity = drift + (velocity - drift) * pow(0.5, delta)
 	position += velocity * delta
 	life -= delta

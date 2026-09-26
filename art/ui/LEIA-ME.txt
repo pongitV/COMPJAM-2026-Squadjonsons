@@ -6,13 +6,13 @@ substitui o placeholder desenhado em codigo. Sem o arquivo, o jogo continua
 usando o placeholder. A lista completa de slots (com o que cada um e) fica em
 scripts/ui/ui_skin.gd, na constante SLOTS.
 
-Paineis, abas e botoes (card*, panel*, tab*, button_*, key) sao esticados em
+Paineis, cards e botoes (card*, panel*, button_*, key) sao esticados em
 9-slice: os 12 px de cada canto ficam intactos e o meio estica (a margem muda
 por slot em UISkin.SLICE). Icones, mira e seta sao encaixados no tamanho do
 placeholder mantendo a proporcao; desenhe-os quadrados.
 
 Tamanhos de referencia (px na tela):
-  icon_record                                           30 x 30
+  icon_cells / icon_countdown / icon_record             30 x 30
   race_marker                                           22 x 22
   race_flag (mastro embaixo a esquerda)                 26 x 30
   icon_pause / icon_manual                              28 x 28

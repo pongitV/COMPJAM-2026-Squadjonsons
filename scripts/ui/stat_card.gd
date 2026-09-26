@@ -6,6 +6,7 @@ extends PanelContainer
 
 var icon: HexIcon
 var _color: Color
+var _caption_label: Label
 var _value_label: Label
 var _sub_label: Label
 var _target := 0
@@ -28,7 +29,8 @@ func _init(caption: String, color: Color, id: String) -> void:
 	col.add_theme_constant_override("separation", 1)
 	col.custom_minimum_size.x = 86
 	row.add_child(col)
-	col.add_child(UIStyle.label(caption, 10, color.lightened(0.35), UIStyle.CAPTION))
+	_caption_label = UIStyle.label(caption, 10, color.lightened(0.35), UIStyle.CAPTION)
+	col.add_child(_caption_label)
 	_value_label = UIStyle.label("0", 20, UIStyle.TEXT, UIStyle.DISPLAY)
 	col.add_child(_value_label)
 	_sub_label = UIStyle.label("", 10, UIStyle.TEXT_DIM, UIStyle.CAPTION)
@@ -41,12 +43,17 @@ func set_value(v: int) -> void:
 		return
 	var gained := v > _target
 	_target = v
-	_bump(_color if gained else UIStyle.RED, gained)
+	bump(_color if gained else UIStyle.RED, gained)
 
 
-## Texto livre (sem animacao de contagem), ex.: o cronometro.
-func set_text(text: String) -> void:
+## Texto livre (sem animacao de contagem), ex.: o countdown.
+func set_text(text: String, color: Color = UIStyle.TEXT) -> void:
 	_value_label.text = UIStyle.plain(text)
+	_value_label.add_theme_color_override("font_color", color)
+
+
+func set_caption(text: String) -> void:
+	_caption_label.text = UIStyle.plain(text)
 
 
 func set_sub(text: String) -> void:
@@ -63,7 +70,8 @@ func _process(delta: float) -> void:
 	_value_label.text = UIStyle.fmt_int(roundi(_shown))
 
 
-func _bump(flash: Color, gained: bool) -> void:
+## Pulso no valor e no icone, na cor `flash`.
+func bump(flash: Color, gained: bool = true) -> void:
 	icon.kick()
 	_value_label.pivot_offset = Vector2(0, _value_label.size.y * 0.5)
 	_value_label.scale = Vector2.ONE * (1.12 if gained else 0.9)
