@@ -38,6 +38,7 @@ var _shake := 0.0
 
 func _ready() -> void:
 	randomize()
+	InputActions.ensure_defaults()
 	best_score = _load_best()
 
 	var bg := CanvasLayer.new()

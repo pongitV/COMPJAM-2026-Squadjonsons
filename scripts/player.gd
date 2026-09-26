@@ -10,6 +10,8 @@ const ACCEL := 1100.0
 const MAX_SPEED := 320.0
 ## Fração da velocidade mantida após 1 segundo (atrito).
 const DAMPING := 0.25
+## Velocidade de giro (rad/s) de uma nave pequena, segurando "rotate".
+const TURN_SPEED := 3.5
 
 const CORE_COLOR := Color(1.0, 0.85, 0.35)
 const HURT_COLOR := Color(1.0, 0.25, 0.2)
@@ -18,6 +20,8 @@ const SOCKET_COLOR := Color(0.02, 0.04, 0.08)
 var alive := true
 ## Ponto global para onde os canhões miram (atualizado pelo jogo).
 var aim := Vector2.RIGHT
+## Girando em direção à mira (tecla segurada).
+var turning := false
 ## Vector2i -> segundos até o canhão daquela célula poder atirar de novo.
 var _cooldowns := {}
 
@@ -35,6 +39,14 @@ func step(delta: float) -> void:
 	velocity *= pow(DAMPING, delta)
 	velocity = velocity.limit_length(MAX_SPEED)
 	position += velocity * delta
+
+	# Segurando "rotate", a nave gira em torno do núcleo até a frente
+	# (eixo +X local) apontar para a mira.
+	turning = Input.is_action_pressed("rotate")
+	if turning:
+		var diff := wrapf((aim - global_position).angle() - rotation, -PI, PI)
+		var max_step := TURN_SPEED * mass_factor * delta
+		rotation += clampf(diff, -max_step, max_step)
 
 	for h in _cooldowns:
 		_cooldowns[h] = maxf(_cooldowns[h] - delta, 0.0)
@@ -61,10 +73,15 @@ func is_armed(h: Vector2i) -> bool:
 	return w != Weapons.NONE and (w != Weapons.COMMON or is_outer(h))
 
 
-## Direção do cano: o laser aponta para fora da nave, os demais para a mira.
+## Direção global do cano: o laser aponta para fora da nave (gira junto
+## com ela), os demais para a mira.
 func barrel_dir(h: Vector2i) -> Vector2:
-	var d := cell_local(h) if weapon_at(h) == Weapons.LASER else aim - cell_global(h)
-	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT
+	var d: Vector2
+	if weapon_at(h) == Weapons.LASER:
+		d = cell_local(h).rotated(rotation)
+	else:
+		d = aim - cell_global(h)
+	return d.normalized() if d.length_squared() > 0.01 else Vector2.RIGHT.rotated(rotation)
 
 
 ## Dispara todos os canhões prontos.
@@ -95,7 +112,8 @@ func absorb_at(global_p: Vector2, weapon: int = Weapons.NONE) -> Vector2i:
 ## Coloca um canhão comum numa célula de casco da borda, do lado da mira.
 ## Sem casco livre na borda, a nave ganha uma célula nova com o canhão.
 func add_common_cannon() -> Vector2i:
-	var aim_dir := (aim - global_position).normalized()
+	# Direção da mira no espaço local da nave (que pode estar girada).
+	var aim_dir := (aim - global_position).normalized().rotated(-rotation)
 	var best := CORE
 	var best_score := -INF
 	for h in cells:
@@ -234,12 +252,25 @@ func _draw() -> void:
 				draw_circle(cell_local(h), Hex.SIZE * 0.35, Color(1, 1, 1, 0.9))
 			continue
 		_draw_cannon(h, w)
+	if turning and alive:
+		_draw_heading()
+
+
+## Seta na frente da nave (eixo +X local) enquanto ela gira.
+func _draw_heading() -> void:
+	var tip := Vector2(bound_radius + 24.0, 0.0)
+	var arrow := PackedVector2Array([tip, tip + Vector2(-18, -11), tip + Vector2(-12, 0), tip + Vector2(-18, 11)])
+	draw_colored_polygon(arrow, Color(CORE_COLOR, 0.95))
+	arrow.append(arrow[0])
+	draw_polyline(arrow, Color.WHITE, 1.5, true)
+	draw_dashed_line(Vector2(Hex.SIZE, 0), tip - Vector2(14, 0), Color(CORE_COLOR, 0.45), 2.0, 6.0)
 
 
 ## Soquete escuro + cano apontando + luz que acende quando está carregado.
 func _draw_cannon(h: Vector2i, w: int) -> void:
 	var c := cell_local(h)
-	var dir := barrel_dir(h)
+	# _draw usa o espaço local da nave, então desfaz a rotação da direção global.
+	var dir := barrel_dir(h).rotated(-rotation)
 	var col := Weapons.color(w).lightened(0.55)
 	var armed := is_armed(h)
 	var ready: float = 1.0 - _cooldowns.get(h, 0.0) / Weapons.COOLDOWN[w]

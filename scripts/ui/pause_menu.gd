@@ -24,7 +24,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
-	_ensure_pause_action()
+	InputActions.ensure_defaults()
 	_root = Control.new()
 	_root.theme = UIStyle.theme()
 	add_child(_root)
@@ -43,18 +43,6 @@ func _ready() -> void:
 	_info_panel = _build_info()
 	center.add_child(_main_panel)
 	center.add_child(_info_panel)
-
-
-## A ação "pause" fica no project.godot; se ela sumir (ex.: editor salvou
-## uma versão antiga das configurações), registra ESC e P aqui.
-func _ensure_pause_action() -> void:
-	if InputMap.has_action("pause"):
-		return
-	InputMap.add_action("pause")
-	for key in [KEY_ESCAPE, KEY_P]:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = key
-		InputMap.action_add_event("pause", ev)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -181,8 +169,9 @@ func _build_info() -> Control:
 		[["W", "A", "S", "D"], "Mover"],
 		[["UP", "LEFT", "DOWN", "RIGHT"], "Mover (alternativo)"],
 		[["Clique esquerdo"], "Atirar (segure)"],
+		[["R"], "Girar a nave para a mira (segure)"],
 		[["ESC"], "Pausar / voltar"],
-		[["R"], "Reiniciar após o game over"],
+		[["R"], "Reiniciar (após o game over)"],
 	]
 	for c in controls:
 		var keys := HBoxContainer.new()
@@ -205,7 +194,7 @@ func _build_info() -> Control:
 	_rule(right, Weapons.color(Weapons.COMMON), "COMUM",
 		"Tiro único na mira. Você ganha 1 a cada %d asteroides destruídos. Fica sempre na borda da nave." % Weapons.ASTEROIDS_PER_COMMON)
 	_rule(right, Weapons.color(Weapons.SHOTGUN), "SHOTGUN", "6 tiros em leque, de alcance curto.")
-	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Raio para fora da nave, com dano contínuo por 3 segundos.")
+	_rule(right, Weapons.color(Weapons.LASER), "LASER", "Raio para fora da nave, com dano contínuo por 3 segundos. Gire a nave (R) para mirar.")
 	_rule(right, Weapons.color(Weapons.BOMB), "BOMBA", "Míssil lento que explode na mira ou ao tocar um asteroide, com dano em área.")
 	_rule(right, Weapons.color(Weapons.NONE), "CASCO", "Hexágono sem canhão. Não atira, mas protege o núcleo.")
 

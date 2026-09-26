@@ -10,6 +10,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 |---|---|
 | Mover | WASD / setas |
 | Atirar | Clique esquerdo (segurar) |
+| Girar a nave para a mira | R (segurar) |
 | Pausar / info | ESC (ou P) |
 | Reiniciar (após game over) | R |
 
@@ -23,7 +24,7 @@ Abra a pasta no Godot 4.5 (Importar → `project.godot`) e aperte **F5**.
 |---|---|---|---|
 | Comum | Azul | Tiro único na direção da mira | 1 a cada 5 asteroides destruídos. Só fica na camada externa da nave: se for cercado, muda sozinho para a borda |
 | Shotgun | Laranja | 6 tiros em leque, alcance curto | Minério laranja |
-| Laser | Vermelho | Raio para fora da nave (do núcleo para o canhão) com dano contínuo por 3 s | Minério vermelho |
+| Laser | Vermelho | Raio para fora da nave (do núcleo para o canhão) com dano contínuo por 3 s; gire a nave (R) para mirar | Minério vermelho |
 | Bomba | Roxo | Míssil lento que explode na mira ou ao tocar um asteroide, com dano em área | Minério roxo |
 
 ## Estrutura
