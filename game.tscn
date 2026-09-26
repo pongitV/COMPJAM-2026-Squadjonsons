@@ -1,6 +1,30 @@
 [gd_scene format=3 uid="uid://iw1i648xg5ke"]
 
 [ext_resource type="Script" uid="uid://d0otlcucusieu" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://bub5hlb16jrm0" path="res://scripts/asteroid_config.gd" id="2_7jktm"]
+[ext_resource type="Script" uid="uid://domm8sh53p0qd" path="res://scripts/cannon_config.gd" id="3_ryrav"]
+[ext_resource type="Script" uid="uid://bk0y0av1ow85d" path="res://scripts/travel_config.gd" id="4_eow3j"]
+[ext_resource type="Script" uid="uid://5pwcnwgrkf4v" path="res://scripts/enemy_config.gd" id="5_j5wjh"]
+
+[sub_resource type="Resource" id="Resource_1ieg7"]
+script = ExtResource("2_7jktm")
+metadata/_custom_type_script = "uid://bub5hlb16jrm0"
+
+[sub_resource type="Resource" id="Resource_l82ug"]
+script = ExtResource("3_ryrav")
+metadata/_custom_type_script = "uid://domm8sh53p0qd"
+
+[sub_resource type="Resource" id="Resource_yrsd7"]
+script = ExtResource("4_eow3j")
+metadata/_custom_type_script = "uid://bk0y0av1ow85d"
+
+[sub_resource type="Resource" id="Resource_kutv3"]
+script = ExtResource("5_j5wjh")
+metadata/_custom_type_script = "uid://5pwcnwgrkf4v"
 
 [node name="Game" type="Node2D" unique_id=496898106]
 script = ExtResource("1_game")
+asteroid_config = SubResource("Resource_1ieg7")
+cannon_config = SubResource("Resource_l82ug")
+travel_config = SubResource("Resource_yrsd7")
+enemy_config = SubResource("Resource_kutv3")
