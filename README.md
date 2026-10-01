@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="HexCoreMenu.png" alt="HexCore - Keep the Hex Together" width="600"/>
+<img src="docs/assets/HexCoreIcon.png" alt="HexCore - Keep the Hex Together" width="600"/>
 
 # HexCore
 ### *Keep the Hex Together*
