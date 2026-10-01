@@ -128,6 +128,7 @@ func _process(delta: float) -> void:
 				finish(false)
 
 func _start_piece_rotation_tutorial() -> void:
+	_game.tractor.set_tutorial_hold(true)
 	_assembly_rotation_required = true
 	_assembly_rotated = false
 
@@ -171,7 +172,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			# Libera o jogo depois da rotação.
 					get_tree().paused = false
-
 					_panel.show_tip(
 						"TUTORIAL 1/3",
 						"MONTAGEM",

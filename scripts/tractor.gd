@@ -37,34 +37,49 @@ var _turns := 0
 var _grab_offset := Vector2.ZERO
 var _player: Player
 var _t := 0.0
+var tutorial_hold := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 func reach(player: Player) -> float:
 	return player.bound_radius + RANGE
-
+func set_tutorial_hold(enabled: bool) -> void:
+	tutorial_hold = enabled
 
 func step(delta: float, player: Player, ores: Array[Ore], mouse: Vector2, pressed: bool, just_pressed: bool) -> void:
 	_player = player
 	_t += delta
+
 	if ore != null and not is_instance_valid(ore):
 		ore = null
-	hover = null
+		hover = null
+
+	# Nenhuma peça sendo segurada.
 	if ore == null and player.alive:
 		hover = _piece_under(mouse, ores)
+
 		if just_pressed and hover != null and _in_reach(hover):
 			_grab(hover, mouse)
 
+	# Existe uma peça sendo segurada.
 	if ore != null:
 		_held += delta
-		if not pressed or not player.alive:
-			_release()
-		else:
+
+		if tutorial_hold:
 			_drag(delta, mouse)
+
+			# Um novo clique encerra o modo especial do tutorial.
+			if just_pressed:
+				tutorial_hold = false
+		else:
+			if pressed:
+				_drag(delta, mouse)
+			else:
+				_release()
+
 	_step_pulled(delta)
 	queue_redraw()
-
 
 ## Pedacos puxados: vao ate a nave, alinhados ao grid, e encaixam assim que
 ## houver lugar. Desistem se demorarem demais (ex.: sem espaco livre).
@@ -94,7 +109,10 @@ func _step_pulled(delta: float) -> void:
 ## Um pedaco esta sendo segurado (arrastado) ha mais tempo que um clique rapido.
 func holding() -> bool:
 	return ore != null and _held >= QUICK_CLICK
-
+func _process(delta: float) -> void:
+	if get_tree().paused and tutorial_hold and ore != null and _player != null:
+		_drag(delta, get_global_mouse_position())
+		queue_redraw()
 
 ## Gira o pedaco segurado em passos de 60 graus (+1 horario, -1 anti-horario).
 func turn(steps: int) -> void:

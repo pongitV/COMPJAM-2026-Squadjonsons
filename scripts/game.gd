@@ -183,8 +183,6 @@ func _ready() -> void:
 	if tutorial_enabled:
 		tutorial = Tutorial.new(self)
 		add_child(tutorial)
-
-
 func _on_laser_started() -> void:
 	if not laser_sfx.playing:
 		laser_sfx.play()
