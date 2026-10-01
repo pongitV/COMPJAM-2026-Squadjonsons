@@ -38,6 +38,8 @@ var _grab_offset := Vector2.ZERO
 var _player: Player
 var _t := 0.0
 
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 func reach(player: Player) -> float:
 	return player.bound_radius + RANGE

@@ -87,6 +87,7 @@ func _ready() -> void:
 	music = AudioStreamPlayer.new()
 	music.stream = preload("res://Audio/Music/battle.wav")
 	music.volume_db = -30.0
+	music.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(music)
 	music.play()
 	
