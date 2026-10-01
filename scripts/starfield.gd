@@ -40,11 +40,22 @@ func configure(cfg: TravelConfig) -> void:
 
 
 func _ready() -> void:
+	# O background continua funcionando mesmo com o jogo pausado.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
 	for i in star_count:
 		_stars.append([Vector2(randf() * TILE, randf() * TILE), randf()])
 	for i in speed_lines:
 		_lines.append([randf(), randf_range(80.0, 260.0), randf()])
 
+func _process(_delta: float) -> void:
+	# Mantém o movimento do fundo mesmo quando o jogo está pausado.
+	if get_tree().paused:
+		var speed := 0.0
+		# O Game normalmente atualiza cam_velocity.
+		# Durante a pausa usamos a última velocidade conhecida.
+		cam_pos += cam_velocity * _delta
+	queue_redraw()
 
 func _draw() -> void:
 	var screen := get_viewport_rect().size

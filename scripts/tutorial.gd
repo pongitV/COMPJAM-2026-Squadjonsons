@@ -65,8 +65,12 @@ var _rotated := 0.0
 ## Canhoes na nave (fora o do nucleo) quando o inimigo morreu.
 var _turrets_before := 0
 var _window: FormationWindow
-## A dica da roda do mouse (girar o pedaco segurado) ja apareceu.
-var _wheel_tip_shown := false
+
+## O jogador ja pegou o primeiro pedaco e precisa gira-lo.
+var _assembly_rotation_required := false
+
+## O jogador ja girou o pedaco pelo menos uma vez.
+var _assembly_rotated := false
 
 
 func _init(game: Node) -> void:
@@ -74,6 +78,8 @@ func _init(game: Node) -> void:
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	
 	_panel = TutorialPanel.new()
 	add_child(_panel)
 	_game.asteroid_destroyed.connect(_on_asteroid_destroyed)
@@ -97,13 +103,8 @@ func _process(delta: float) -> void:
 		Step.ROCK, Step.ENEMY:
 			_respawn_if_lost()
 		Step.ASSEMBLY:
-			if not _wheel_tip_shown and _game.tractor.holding():
-				_wheel_tip_shown = true
-				_panel.show_tip("TUTORIAL  1/3", "GIRAR O PEDAÇO",
-					"Com o pedaço seguro, role {WHEEL} para girá-lo e escolher como ele encaixa na nave.",
-					Ore.COLOR)
-			if _timer > STEP_TIMEOUT or _nothing_to_grab(false):
-				_to_break()
+			if not _assembly_rotation_required and _game.tractor.ore != null:
+				_start_piece_rotation_tutorial()
 		Step.BREAK:
 			if _timer > 1.5:
 				_spawn_target(true)
@@ -126,13 +127,59 @@ func _process(delta: float) -> void:
 			if _timer > 3.0:
 				finish(false)
 
+func _start_piece_rotation_tutorial() -> void:
+	_game.tractor.set_tutorial_hold(true)
+	_assembly_rotation_required = true
+	_assembly_rotated = false
+
+	# Pausa completamente o jogo.
+	get_tree().paused = true
+
+	_panel.show_tip(
+		"TUTORIAL 1/3",
+		"GIRAR DESTROÇO",
+		"Para facilitar a formação dos canhões melhores, utilize {WHEEL} "
+		+ "para rotacionar a peça na direção necessária.",
+		Ore.COLOR
+		)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if running and event is InputEventKey and event.pressed and not event.echo \
+	if not running:
+		return
+
+	# ENTER pula o tutorial inteiro.
+	if event is InputEventKey and event.pressed and not event.echo \
 			and event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
 		get_viewport().set_input_as_handled()
 		finish(false)
+		return
 
+	# Durante a etapa obrigatória, o jogador precisa usar o scroll.
+	if _step == Step.ASSEMBLY \
+			and _assembly_rotation_required \
+			and not _assembly_rotated \
+			and _game.tractor.ore != null:
+
+		if event is InputEventMouseButton \
+				and event.pressed:
+					if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+						_game.tractor.turn(1)
+					if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+						_game.tractor.turn(-1)
+					else:
+						return
+					_assembly_rotated = true
+
+			# Libera o jogo depois da rotação.
+					get_tree().paused = false
+					_panel.show_tip(
+						"TUTORIAL 1/3",
+						"MONTAGEM",
+						"Muito bem! Agora encaixe o pedaço na nave. "
+						+ "Clique nele ou segure e arraste até a posição desejada.",
+						Ore.COLOR
+					)
+					get_viewport().set_input_as_handled()
 
 ## Encerra o tutorial (pulado, concluido ou fim de jogo) e devolve a
 ## velocidade normal. O spawn normal recomeca sozinho.
@@ -169,11 +216,12 @@ func _on_asteroid_destroyed(a: Asteroid) -> void:
 	_target = null
 	if _step == Step.ROCK:
 		_slow(true)
-		_panel.show_tip("TUTORIAL  1/3", "MONTAGEM",
-			"Asteroides destruídos viram pedaços de casco. Clique {LMB} num pedaço dentro do alcance "
-			+ "e ele encaixa direto na nave, sem arrastar. Para escolher o lugar, segure {LMB} e "
-			+ "arraste até a nave, soltando quando o encaixe aparecer.",
-			Ore.COLOR)
+		_panel.show_tip(
+			"TUTORIAL  1/3", "MONTAGEM",
+			"Asteroides destruidos viram pedaços de casco"
+			+ "Clique em um pedaço para segurá-lo.",
+			Ore.COLOR
+			)
 		_go(Step.ASSEMBLY)
 	elif _step == Step.ENEMY:
 		_slow(true)
@@ -188,7 +236,11 @@ func _on_piece_attached(_placement: Dictionary) -> void:
 	if not running:
 		return
 	if _step == Step.ASSEMBLY:
-		_to_break()
+		# O tutorial so permite continuar depois que o jogador
+		# tiver girado a peca pelo menos uma vez.
+		if _assembly_rotated:
+			_to_break()
+		return
 	elif _step == Step.UPGRADE and _turret_count() >= _turrets_before + 2:
 		_show_formations()
 

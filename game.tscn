@@ -1,6 +1,33 @@
 [gd_scene format=3 uid="uid://iw1i648xg5ke"]
 
 [ext_resource type="Script" uid="uid://d0otlcucusieu" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://bub5hlb16jrm0" path="res://scripts/asteroid_config.gd" id="2_7jktm"]
+[ext_resource type="Script" uid="uid://bk0y0av1ow85d" path="res://scripts/travel_config.gd" id="2_e2o6t"]
+[ext_resource type="Script" uid="uid://domm8sh53p0qd" path="res://scripts/cannon_config.gd" id="3_ryrav"]
+[ext_resource type="Script" uid="uid://5pwcnwgrkf4v" path="res://scripts/enemy_config.gd" id="5_eow3j"]
+
+[sub_resource type="Resource" id="Resource_feb5d"]
+script = ExtResource("2_7jktm")
+metadata/_custom_type_script = "uid://bub5hlb16jrm0"
+
+[sub_resource type="Resource" id="Resource_fc0e3"]
+script = ExtResource("3_ryrav")
+metadata/_custom_type_script = "uid://domm8sh53p0qd"
+
+[sub_resource type="Resource" id="Resource_e2o6t"]
+script = ExtResource("2_e2o6t")
+metadata/_custom_type_script = "uid://bk0y0av1ow85d"
+
+[sub_resource type="Resource" id="Resource_7jktm"]
+script = ExtResource("5_eow3j")
+max_alive_by_minute = null
+interval_by_minute = null
+metadata/_custom_type_script = "uid://5pwcnwgrkf4v"
 
 [node name="Game" type="Node2D" unique_id=496898106]
 script = ExtResource("1_game")
+asteroid_config = SubResource("Resource_feb5d")
+cannon_config = SubResource("Resource_fc0e3")
+travel_config = SubResource("Resource_e2o6t")
+enemy_config = SubResource("Resource_7jktm")
+tutorial_enabled = null
