@@ -65,8 +65,6 @@ var _rotated := 0.0
 ## Canhoes na nave (fora o do nucleo) quando o inimigo morreu.
 var _turrets_before := 0
 var _window: FormationWindow
-## A dica da roda do mouse (girar o pedaco segurado) ja apareceu.
-var _wheel_tip_shown := false
 
 ## O jogador ja pegou o primeiro pedaco e precisa gira-lo.
 var _assembly_rotation_required := false
