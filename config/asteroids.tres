@@ -4,4 +4,6 @@
 
 [resource]
 script = ExtResource("1_config")
-difficulty_per_minute = 0.2
+difficulty_per_minute = 0.1
+difficulty_max = 1.5
+size_cap = 15

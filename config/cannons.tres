@@ -4,6 +4,8 @@
 
 [resource]
 script = ExtResource("1_config")
+damage_multiplier = 1.2000000000000002
+fire_rate_multiplier = 1.2000000000000002
 common_damage = 1.2
 common_range = 700.0
 common_speed = 750.0
